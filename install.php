@@ -1,6 +1,6 @@
 <?php
 /**
- * Aronium POS Web — one-click installer
+ * Jess POS Web — one-click installer
  * ------------------------------------------------------------
  * Creates the database, imports the schema, creates the admin
  * account and writes your credentials into config/config.php.
@@ -9,7 +9,7 @@
  * to run again once storage/installed.lock exists).
  */
 
-session_name('aroniumpos');
+session_name('Jesspos');
 session_start();
 
 require_once __DIR__ . '/config/config.php';
@@ -19,7 +19,7 @@ require_once __DIR__ . '/app/helpers.php';
 date_default_timezone_set(APP_TIMEZONE);
 
 $lockFile = __DIR__ . '/storage/installed.lock';
-$sqlFile  = __DIR__ . '/database/aronium_pos.sql';
+$sqlFile  = __DIR__ . '/database/Jess_pos.sql';
 
 $step   = 'form';                 // form | done
 $errors = [];
@@ -34,7 +34,7 @@ if (is_post()) {
         $errors[] = 'The form expired. Please reload and try again.';
     } else {
         $host = trim((string) post('db_host', 'localhost'));
-        $name = trim((string) post('db_name', 'aronium_pos'));
+        $name = trim((string) post('db_name', 'Jess_pos'));
         $user = trim((string) post('db_user', 'root'));
         $pass = (string) post('db_pass', '');
 
@@ -65,7 +65,7 @@ if (is_post()) {
 
                 // 2. import the schema + starter data
                 if (!file_exists($sqlFile)) {
-                    throw new RuntimeException('database/aronium_pos.sql was not found.');
+                    throw new RuntimeException('database/Jess_pos.sql was not found.');
                 }
                 $sql = file_get_contents($sqlFile);
                 $sql = preg_replace('/^\s*--.*$/m', '', $sql);
@@ -235,7 +235,7 @@ $dbError = get('error') === 'db';
         </div>
       </form>
       <p class="muted small" style="margin-top:1rem">
-        Prefer manual setup? Import <code>database/aronium_pos.sql</code> in phpMyAdmin and edit
+        Prefer manual setup? Import <code>database/Jess_pos.sql</code> in phpMyAdmin and edit
         <code>config/config.php</code> instead. Default login then is <code>admin</code> / <code>admin123</code>.
       </p>
     <?php endif; ?>

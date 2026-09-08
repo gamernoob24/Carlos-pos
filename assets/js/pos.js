@@ -1,5 +1,5 @@
 /* ============================================================
-   Aronium POS Web — point of sale screen
+   Jess POS Web — point of sale screen
    ============================================================ */
 (function () {
   'use strict';

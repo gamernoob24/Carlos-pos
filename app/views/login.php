@@ -3,7 +3,7 @@
   <div class="auth-brand">
     <div class="brand-mark lg">A</div>
     <div>
-      <h2>Aronium POS</h2>
+      <h2>Jess POS</h2>
       <p>Web Edition — sign in to start selling</p>
     </div>
   </div>

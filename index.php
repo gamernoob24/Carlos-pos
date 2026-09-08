@@ -1,6 +1,6 @@
 <?php
 /**
- * Aronium POS Web — front controller
+ * Jess POS Web — front controller
  * ------------------------------------------------------------
  * Every screen is reached through  index.php?page=...
  */

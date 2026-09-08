@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
         'samesite' => 'Lax',
         'path'     => '/',
     ]);
-    session_name('aroniumpos');
+    session_name('Jesspos');
     session_start();
 }
 

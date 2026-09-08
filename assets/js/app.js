@@ -1,5 +1,5 @@
 /* ============================================================
-   Aronium POS Web — global UI behaviour
+   Jess POS Web — global UI behaviour
    ============================================================ */
 (function () {
   'use strict';
