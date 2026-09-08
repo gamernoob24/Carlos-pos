@@ -2,8 +2,6 @@
 
 A **web-based point-of-sale system** built for the XAMPP stack — PHP 7.4+/8.x, MySQL/MariaDB, Apache, no frameworks and no Composer. It follows the classic Jess-style workflow (catalog → cart → payment → receipt → history) but runs in any browser, on any machine on your network.
 
-> Independent, open implementation inspired by the Jess POS workflow. Not affiliated with or endorsed by Jess Ltd.
-
 ---
 
 ## 1. What's inside
