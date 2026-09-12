@@ -10,7 +10,7 @@ function pos_controller()
 
     // Products available on the sales floor (capped for performance)
     $products = db_all(
-        'SELECT p.id, p.sku, p.barcode, p.name, p.selling_price, p.stock_qty, p.unit,
+        'SELECT p.id, p.sku, p.barcode, p.name, p.selling_price AS price, p.stock_qty AS stock, p.unit,
                 p.tax_exempt, p.category_id, c.name AS category_name
            FROM products p
            LEFT JOIN categories c ON c.id = p.category_id
@@ -20,9 +20,9 @@ function pos_controller()
     );
 
     foreach ($products as $i => $p) {
-        $products[$i]['selling_price'] = (float) $p['selling_price'];
-        $products[$i]['stock_qty']     = (float) $p['stock_qty'];
-        $products[$i]['tax_exempt']    = (int) $p['tax_exempt'];
+        $products[$i]['price']      = (float) $p['price'];
+        $products[$i]['stock']      = (float) $p['stock'];
+        $products[$i]['tax_exempt'] = (int) $p['tax_exempt'];
     }
 
     $recent = db_all(
