@@ -17,7 +17,7 @@ $voided = $sale['status'] === 'voided';
 <div class="receipt-page">
   <div class="receipt<?= $voided ? ' is-voided' : '' ?>" id="receipt">
     <div class="r-head">
-      <h2><?= e(setting('business_name', 'Jess POS Web')) ?></h2>
+      <h2><?= e(setting('business_name', 'Carlos POS Web')) ?></h2>
       <?php if (setting('business_address')): ?><p><?= nl2br(e(setting('business_address'))) ?></p><?php endif; ?>
       <?php if (setting('business_phone')): ?><p><?= e(setting('business_phone')) ?></p><?php endif; ?>
       <?php if (setting('business_tin')): ?><p>TIN: <?= e(setting('business_tin')) ?></p><?php endif; ?>

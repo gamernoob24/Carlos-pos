@@ -1,5 +1,5 @@
 /* ============================================================
-   Jess POS Web — point of sale screen
+   Carlos POS Web — point of sale screen
    ============================================================ */
 (function () {
   'use strict';

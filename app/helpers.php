@@ -373,6 +373,6 @@ function stock_move($productId, $change, $reason, $balanceAfter = null)
 function app_log($message)
 {
     if (defined('APP_DEBUG') && APP_DEBUG) {
-        error_log('[Jess-pos] ' . $message);
+        error_log('[Carlos-pos] ' . $message);
     }
 }

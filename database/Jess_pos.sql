@@ -1,16 +1,16 @@
 -- =============================================================
---  Jess POS Web  —  database schema + starter data
+--  Carlos POS Web  —  database schema + starter data
 --  MySQL 5.7+ / MariaDB 10.2+   (charset: utf8mb4)
---  Import: phpMyAdmin -> Import  |  or  mysql -u root -p < Jess_pos.sql
+--  Import: phpMyAdmin -> Import  |  or  mysql -u root -p < Carlos_pos.sql
 --  Safe to re-run: uses CREATE TABLE IF NOT EXISTS / INSERT IGNORE
 -- =============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
 
-CREATE DATABASE IF NOT EXISTS `Jess_pos`
+CREATE DATABASE IF NOT EXISTS `Carlos_pos`
   DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `Jess_pos`;
+USE `Carlos_pos`;
 
 -- -------------------------------------------------------------
 -- Users (cashiers & administrators)
@@ -158,7 +158,7 @@ INSERT IGNORE INTO `users` (`id`,`name`,`username`,`password_hash`,`role`,`activ
 -- Seed: settings
 -- -------------------------------------------------------------
 INSERT IGNORE INTO `settings` (`setting_key`,`setting_value`) VALUES
-('business_name','Jess POS Web'),
+('business_name','Carlos POS Web'),
 ('business_address','123 Main Street, Cagayan de Oro City'),
 ('business_phone','(088) 000-0000'),
 ('business_tin','000-000-000-000'),

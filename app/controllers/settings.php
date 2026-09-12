@@ -12,7 +12,7 @@ function settings_controller()
     if (is_post() && get('action') === 'save') {
         require_admin();
         save_settings([
-            'business_name'       => post('business_name', 'Jess POS Web'),
+            'business_name'       => post('business_name', 'Carlos POS Web'),
             'business_address'    => post('business_address'),
             'business_phone'      => post('business_phone'),
             'business_tin'        => post('business_tin'),

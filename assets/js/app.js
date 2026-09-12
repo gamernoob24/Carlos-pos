@@ -1,5 +1,5 @@
 /* ============================================================
-   Jess POS Web — global UI behaviour
+   Carlos POS Web — global UI behaviour
    ============================================================ */
 (function () {
   'use strict';

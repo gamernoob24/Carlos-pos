@@ -1,6 +1,6 @@
-# Jess POS Web
+# Carlos POS Web
 
-A **web-based point-of-sale system** built for the XAMPP stack — PHP 7.4+/8.x, MySQL/MariaDB, Apache, no frameworks and no Composer. It follows the classic Jess-style workflow (catalog → cart → payment → receipt → history) but runs in any browser, on any machine on your network.
+A **web-based point-of-sale system** built for the XAMPP stack — PHP 7.4+/8.x, MySQL/MariaDB, Apache, no frameworks and no Composer. It follows the classic Carlos-style workflow (catalog → cart → payment → receipt → history) but runs in any browser, on any machine on your network.
 
 ---
 
@@ -26,18 +26,18 @@ A **web-based point-of-sale system** built for the XAMPP stack — PHP 7.4+/8.x,
 
 ### A. Copy the files
 1. Download/extract this folder.
-2. Copy `Jess-pos` into `C:\xampp\htdocs\` so you have  
-   `C:\xampp\htdocs\Jess-pos\index.php`
+2. Copy `Carlos-pos` into `C:\xampp\htdocs\` so you have  
+   `C:\xampp\htdocs\Carlos-pos\index.php`
 
 ### B. Start Apache and MySQL
 Open **XAMPP Control Panel** → *Start* **Apache** and **MySQL**.
 
 ### C. Run the installer
-Go to **http://localhost/Jess-pos/install.php**
+Go to **http://localhost/Carlos-pos/install.php**
 
 Fill in:
 - **Host:** `localhost`
-- **Database name:** `Jess_pos`
+- **Database name:** `Carlos_pos`
 - **Username:** `root`
 - **Password:** *(leave empty — that's the XAMPP default)*
 - **Administrator account:** pick your username and password
@@ -45,9 +45,9 @@ Fill in:
 Click **Install**. It creates the database, imports the schema and demo catalogue, creates your admin user, and writes the credentials into `config/config.php`.
 
 ### D. Sign in
-**http://localhost/Jess-pos/** → log in with the account you just created.
+**http://localhost/Carlos-pos/** → log in with the account you just created.
 
-> **No installer?** (e.g. your Apache blocks it) Do it manually: open **http://localhost/phpmyadmin** → *Import* → choose `database/Jess_pos.sql` → *Go*. Then edit `config/config.php` if your MySQL user/password differ.  
+> **No installer?** (e.g. your Apache blocks it) Do it manually: open **http://localhost/phpmyadmin** → *Import* → choose `database/Carlos_pos.sql` → *Go*. Then edit `config/config.php` if your MySQL user/password differ.  
 > Default demo logins after a manual import: `admin` / `admin123` and `cashier` / `cashier123`.
 
 ### E. Optional clean-up
@@ -58,7 +58,7 @@ Delete `install.php` (it refuses to re-run anyway while `storage/installed.lock`
 ## 3. Using it on the shop network
 
 1. Find your PC's LAN IP: `ipconfig` → e.g. `192.168.1.25`.
-2. From another device on the same Wi-Fi/LAN open **http://192.168.1.25/Jess-pos/**.
+2. From another device on the same Wi-Fi/LAN open **http://192.168.1.25/Carlos-pos/**.
 3. If Windows Firewall blocks it, allow **Apache HTTP Server** on private networks.
 
 Any tablet, phone or second PC can then work as a cashier terminal — no install needed on those devices.
@@ -81,7 +81,7 @@ A USB barcode scanner works like a keyboard: click into the search box and scan.
 ## 5. Folder map
 
 ```
-Jess-pos/
+Carlos-pos/
 ├─ index.php               front controller (all screens: index.php?page=…)
 ├─ api.php                 JSON API used by the POS (search + checkout)
 ├─ install.php             one-click database installer
@@ -93,7 +93,7 @@ Jess-pos/
 │  ├─ controllers/         auth, pos, products, sales, reports, settings, errors
 │  └─ views/               one file per screen + layout/header|footer
 ├─ assets/                 css/app.css, js/app.js, js/pos.js
-├─ database/Jess_pos.sql  schema + demo catalogue
+├─ database/Carlos_pos.sql  schema + demo catalogue
 └─ storage/                installer lock file (keep writable)
 ```
 
@@ -113,7 +113,7 @@ Jess-pos/
 
 ## 7. Backups
 
-- **phpMyAdmin:** select `Jess_pos` → *Export* → *Go* (keeps a `.sql` snapshot).
+- **phpMyAdmin:** select `Carlos_pos` → *Export* → *Go* (keeps a `.sql` snapshot).
 - **Or** use the built-in *Export CSV* buttons on Products, Sales and Reports for spreadsheets.
 
 ---

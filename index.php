@@ -1,6 +1,6 @@
 <?php
 /**
- * Jess POS Web — front controller
+ * Carlos POS Web — front controller
  * ------------------------------------------------------------
  * Every screen is reached through  index.php?page=...
  */

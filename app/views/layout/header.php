@@ -38,7 +38,7 @@ $navItems = [
     <div class="brand">
       <div class="brand-mark">A</div>
       <div class="brand-text">
-        <strong>Jess POS</strong>
+        <strong>Carlos POS</strong>
         <span>Web Edition</span>
       </div>
     </div>
