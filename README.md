@@ -65,6 +65,15 @@ Any tablet, phone or second PC can then work as a cashier terminal — no instal
 
 ---
 
+## 3.1 Deployment using Ngrok
+
+Using Ngrok for deplying it outside the network:
+```
+ngrok http 80
+```
+
+---
+
 ## 4. Keyboard shortcuts (POS screen)
 
 | Key | Action |
