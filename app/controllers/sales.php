@@ -33,7 +33,7 @@ function sales_controller()
         $where[]  = 's.payment_method = ?';
         $params[] = $pay;
     }
-    if (in_array($status, ['completed', 'voided'], true)) {
+    if (in_array($status, ['queued', 'preparing', 'completed', 'voided'], true)) {
         $where[]  = 's.status = ?';
         $params[] = $status;
     }
@@ -42,9 +42,9 @@ function sales_controller()
 
     $totals = db_one(
         "SELECT COUNT(*) AS cnt,
-                COALESCE(SUM(CASE WHEN s.status='completed' THEN s.total ELSE 0 END),0) AS gross,
-                COALESCE(SUM(CASE WHEN s.status='completed' THEN s.discount_total ELSE 0 END),0) AS discounts,
-                COALESCE(SUM(CASE WHEN s.status='completed' THEN s.tax_total ELSE 0 END),0) AS tax
+                COALESCE(SUM(CASE WHEN s.status<>'voided' THEN s.total ELSE 0 END),0) AS gross,
+                COALESCE(SUM(CASE WHEN s.status<>'voided' THEN s.discount_total ELSE 0 END),0) AS discounts,
+                COALESCE(SUM(CASE WHEN s.status<>'voided' THEN s.tax_total ELSE 0 END),0) AS tax
            FROM sales s WHERE $whereSql",
         $params
     );
@@ -114,6 +114,23 @@ function sales_void()
             }
         }
 
+        // Return every raw ingredient this order consumed (exact snapshot)
+        $ingredientsUsed = db_all(
+            'SELECT sii.ingredient_id, SUM(sii.qty_used) AS qty
+               FROM sale_item_ingredients sii
+               JOIN sale_items si ON si.id = sii.sale_item_id
+              WHERE si.sale_id = ?
+              GROUP BY sii.ingredient_id',
+            [$id]
+        );
+        foreach ($ingredientsUsed as $used) {
+            if (empty($used['ingredient_id'])) continue;
+            db()->prepare('UPDATE ingredients SET stock_qty = stock_qty + ? WHERE id = ?')
+                ->execute([$used['qty'], $used['ingredient_id']]);
+            $balance = (float) db_val('SELECT stock_qty FROM ingredients WHERE id = ?', [$used['ingredient_id']]);
+            stock_move_ingredient($used['ingredient_id'], $used['qty'], 'Void ' . $sale['sale_no'], $balance);
+        }
+
         db_update('sales', [
             'status'    => 'voided',
             'voided_at' => date('Y-m-d H:i:s'),
@@ -179,8 +196,19 @@ function sale_view_controller()
 
     $items = db_all('SELECT * FROM sale_items WHERE sale_id = ? ORDER BY id', [$id]);
 
+    // Attach the chosen modifiers ("no onions", "extra cheese") to each line
+    $modRows = $items ? db_all(
+        'SELECT * FROM sale_item_modifiers
+          WHERE sale_item_id IN (' . implode(',', array_map('intval', array_column($items, 'id'))) . ')'
+    ) : [];
+    foreach ($items as $i => $item) {
+        $items[$i]['modifiers'] = array_values(array_filter($modRows, function ($m) use ($item) {
+            return (int) $m['sale_item_id'] === (int) $item['id'];
+        }));
+    }
+
     return [
-        'title'     => 'Sale ' . $sale['sale_no'],
+        'title'     => 'Order ' . $sale['sale_no'],
         'sale'      => $sale,
         'items'     => $items,
         'autoprint' => (int) get('print', 0) === 1,

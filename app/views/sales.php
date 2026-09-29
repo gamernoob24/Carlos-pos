@@ -18,7 +18,9 @@ $tot = $data['totals'];
     </select>
     <select class="input" name="status">
       <option value="all" <?= $data['status'] === 'all' ? 'selected' : '' ?>>All statuses</option>
-      <option value="completed" <?= $data['status'] === 'completed' ? 'selected' : '' ?>>Completed</option>
+      <option value="queued" <?= $data['status'] === 'queued' ? 'selected' : '' ?>>Queued for kitchen</option>
+      <option value="preparing" <?= $data['status'] === 'preparing' ? 'selected' : '' ?>>Preparing</option>
+      <option value="completed" <?= $data['status'] === 'completed' ? 'selected' : '' ?>>Served</option>
       <option value="voided" <?= $data['status'] === 'voided' ? 'selected' : '' ?>>Voided</option>
     </select>
     <button class="btn btn-ghost" type="submit">Apply</button>
@@ -57,15 +59,12 @@ $tot = $data['totals'];
           <td><span class="pill pill-<?= e($s['payment_method']) ?>"><?= e(ucfirst($s['payment_method'])) ?></span></td>
           <td class="right"><strong><?= e(money($s['total'])) ?></strong></td>
           <td>
-            <?php if ($s['status'] === 'voided'): ?>
-              <span class="pill pill-muted">Voided</span>
-            <?php else: ?>
-              <span class="pill pill-ok">Completed</span>
-            <?php endif; ?>
+            <?php [$stLabel, $stClass] = order_status_meta($s['status']); ?>
+            <span class="pill <?= e($stClass) ?>"><?= e($stLabel) ?></span>
           </td>
           <td class="right">
             <a class="btn btn-sm btn-ghost" href="<?= e(base_url('index.php?page=sale&id=' . $s['id'])) ?>">View</a>
-            <?php if ($s['status'] === 'completed' && is_admin()): ?>
+            <?php if ($s['status'] !== 'voided' && is_admin()): ?>
               <button class="btn btn-sm btn-danger" type="button"
                       data-void-sale="<?= e($s['id']) ?>" data-sale-no="<?= e($s['sale_no']) ?>">Void</button>
             <?php endif; ?>

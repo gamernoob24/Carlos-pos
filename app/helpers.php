@@ -376,3 +376,66 @@ function app_log($message)
         error_log('[Carlos-pos] ' . $message);
     }
 }
+
+/* ------------------------------------------------------------------ */
+/* Inventory (ingredients), shifts & kitchen helpers                   */
+/* ------------------------------------------------------------------ */
+
+/** Record an ingredient stock movement (kitchen consumption, delivery, waste). */
+function stock_move_ingredient($ingredientId, $change, $reason, $balanceAfter = null)
+{
+    $ingredientId = (int) $ingredientId;
+    if ($ingredientId <= 0) {
+        return;
+    }
+    if ($balanceAfter === null) {
+        $balanceAfter = (float) db_val('SELECT stock_qty FROM ingredients WHERE id = ?', [$ingredientId]);
+    }
+    $user = current_user();
+    db_insert('stock_movements', [
+        'product_id'    => null,
+        'ingredient_id' => $ingredientId,
+        'qty_change'    => $change,
+        'balance_after' => $balanceAfter,
+        'reason'        => $reason,
+        'user_id'       => $user ? $user['id'] : null,
+        'user_name'     => $user ? $user['name'] : 'System',
+    ]);
+}
+
+/**
+ * The open cash-drawer shift of a user (business rule: one open shift each).
+ */
+function current_shift($userId = null)
+{
+    static $cache = [];
+    $userId = (int) ($userId ?? (current_user()['id'] ?? 0));
+    if ($userId <= 0) {
+        return null;
+    }
+    if (!array_key_exists($userId, $cache)) {
+        $cache[$userId] = db_one(
+            "SELECT * FROM shifts WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1",
+            [$userId]
+        );
+    }
+    return $cache[$userId];
+}
+
+/** Role label used in the UI (SRS wording: Manager / Cashier). */
+function role_label($role)
+{
+    return $role === 'admin' ? 'Manager' : 'Cashier';
+}
+
+/** Kitchen status → [label, pill class]. */
+function order_status_meta($status)
+{
+    $map = [
+        'queued'    => ['Queued',    'pill-low'],
+        'preparing' => ['Preparing', 'pill-card'],
+        'completed' => ['Served',    'pill-ok'],
+        'voided'    => ['Voided',    'pill-muted'],
+    ];
+    return $map[$status] ?? [$status, 'pill-muted'];
+}

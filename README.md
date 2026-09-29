@@ -1,150 +1,149 @@
-# Carlos POS Web
+# Carlo's Burger — POS & Inventory System
 
-A **web-based point-of-sale system** built for the XAMPP stack — PHP 7.4+/8.x, MySQL/MariaDB, Apache, no frameworks and no Composer. It follows the classic Carlos-style workflow (catalog → cart → payment → receipt → history) but runs in any browser, on any machine on your network.
+A Point-of-Sale and inventory system built for a small burger restaurant, aligned to the
+project SRS: **PHP 8 / MySQL (MariaDB) / HTML5 / CSS3 / vanilla JavaScript**, no framework,
+no Composer, no CDN — it runs fully offline on XAMPP.
 
 ---
 
-## 1. What's inside
+## 1. Requirements
 
-| Module | What it does |
+| Need | Version |
 |---|---|
-| **Point of Sale** | Product grid with categories, live search, barcode/SKU lookup, cart with qty steppers, cart-level discount (% or amount), cash / card / e-wallet, cash tendered + change, keyboard shortcuts |
-| **Products** | Add / edit / delete, SKU + barcode, category, cost & selling price, stock on hand, reorder level, unit, tax-exempt flag, low-stock badges, CSV export |
-| **Stock control** | Stock is deducted on every sale, returned on void, plus manual adjustments with a full movement audit trail per product |
-| **Categories** | Simple CRUD; products fall back to *Uncategorized* |
-| **Sales history** | Filter by date range, sale no., customer, cashier, payment method or status; void a sale (admin) and return stock; CSV export |
-| **Receipts** | Clean 58 mm / 80 mm thermal-style receipt, printable straight from the browser |
-| **Reports** | Gross sales, transactions, average basket, discounts, tax collected, estimated gross profit, sales-over-time bars, payment mix, top sellers, category & cashier breakdown, inventory snapshot |
-| **Settings** | Business name/address/phone/TIN, currency symbol & position, tax name/rate and inclusive-vs-exclusive handling, receipt footer & paper width, sale-number prefix, decimals, negative-stock toggle |
-| **Users** | Admin + cashier roles, password hashing (`password_hash`), password reset, deactivate/delete (past sales keep the cashier name) |
+| XAMPP (or any PHP + MySQL stack) | PHP 8.0+, MySQL 5.7+ / MariaDB 10.2+ |
+| PHP extensions | `pdo_mysql` (enabled by default in XAMPP) |
+| Browser | Any modern browser (Chrome, Edge, Firefox, Safari) |
 
-**Security basics included:** PDO prepared statements everywhere, bcrypt password hashing, CSRF tokens on every POST/AJAX call, HTML escaping on output, HTTP-only session cookie, admin-only routes, throttled logins.
+No internet connection is required at runtime. Every style, script and icon ships with the app.
 
 ---
 
-## 2. Install on XAMPP (Windows) — 5 minutes
+## 2. Installation
 
-### A. Copy the files
-1. Download/extract this folder.
-2. Copy `Carlos-pos` into `C:\xampp\htdocs\` so you have  
-   `C:\xampp\htdocs\Carlos-pos\index.php`
+### Option A — Guided installer (easiest)
 
-### B. Start Apache and MySQL
-Open **XAMPP Control Panel** → *Start* **Apache** and **MySQL**.
+1. Copy the whole `Carlos-pos-main` folder into `C:\xampp\htdocs\` (or `/opt/lampp/htdocs/`).
+2. Start **Apache** and **MySQL** in the XAMPP control panel.
+3. Open `http://localhost/Carlos-pos-main/install.php`.
+4. Enter your MySQL host, user, password and a database name (default `Carlos_pos`).
+5. Click **Install**. The installer creates the database, imports all 13 tables and loads the
+   demo data (15 menu items, 23 ingredients, 56 recipe lines, 10 modifiers, 2 users).
+6. Delete `install.php` afterwards (the app will remind you).
 
-### C. Run the installer
-Go to **http://localhost/Carlos-pos/install.php**
+### Option B — Manual import
 
-Fill in:
-- **Host:** `localhost`
-- **Database name:** `Carlos_pos`
-- **Username:** `root`
-- **Password:** *(leave empty — that's the XAMPP default)*
-- **Administrator account:** pick your username and password
+1. Open `http://localhost/phpmyadmin` → **New** → create a database named `Carlos_pos`
+   with collation `utf8mb4_general_ci`.
+2. Select it → **Import** → choose `database/Carlos_pos.sql` → **Go**.
+3. Edit `app/db.php` if your MySQL user/password differ from `root` / *(empty)*.
 
-Click **Install**. It creates the database, imports the schema and demo catalogue, creates your admin user, and writes the credentials into `config/config.php`.
+### Already running an older version?
 
-### D. Sign in
-**http://localhost/Carlos-pos/** → log in with the account you just created.
-
-> **No installer?** (e.g. your Apache blocks it) Do it manually: open **http://localhost/phpmyadmin** → *Import* → choose `database/Carlos_pos.sql` → *Go*. Then edit `config/config.php` if your MySQL user/password differ.  
-> Default demo logins after a manual import: `admin` / `admin123` and `cashier` / `cashier123`.
-
-### E. Optional clean-up
-Delete `install.php` (it refuses to re-run anyway while `storage/installed.lock` exists).
+Import `database/migrate_v2.sql` instead — it is idempotent and upgrades a v1 database
+(7 tables) to v2 (13 tables) **without deleting any existing sales data**.
 
 ---
 
-## 3. Using it on the shop network
+## 3. Demo accounts
 
-1. Find your PC's LAN IP: `ipconfig` → e.g. `192.168.1.25`.
-2. From another device on the same Wi-Fi/LAN open **http://192.168.1.25/Carlos-pos/**.
-3. If Windows Firewall blocks it, allow **Apache HTTP Server** on private networks.
+| Username | Password | Role | Can do |
+|---|---|---|---|
+| `admin` | `admin123` | Manager | Everything — menu, recipes, ingredients, shifts, sales, reports, users |
+| `cashier` | `cashier123` | Cashier | Take orders, view/advance the kitchen queue, open & close **own** shift, own profile |
 
-Any tablet, phone or second PC can then work as a cashier terminal — no install needed on those devices.
-
----
-
-## 3.1 Deployment using Ngrok
-
-Using Ngrok for deplying it outside the network:
-```
-ngrok http 80
-```
+Passwords are stored as **bcrypt** hashes (`password_hash` / `password_verify`).
 
 ---
 
-## 4. Keyboard shortcuts (POS screen)
+## 4. How the SRS requirements are met
 
-| Key | Action |
+### Entities (5/5)
+| SRS entity | Table(s) |
 |---|---|
-| `F2` | Focus the search / scan box |
-| `Enter` | Add the highlighted product, or look up a scanned barcode |
-| `F8` | Complete the sale |
-| `Esc` | Clear the current sale |
+| Users | `users` (role, bcrypt hash, active flag) |
+| Orders | `sales` (+ `shifts` for the drawer session) |
+| Order Items | `sale_items`, `sale_item_modifiers`, `sale_item_ingredients` |
+| Products / Menu Items | `products`, `categories` |
+| Ingredients / Inventory | `ingredients`, `product_ingredients` (recipes), `stock_movements`, `modifiers` |
 
-A USB barcode scanner works like a keyboard: click into the search box and scan.
+### Business rules
+- **"A product is composed of one or many ingredients"** — `product_ingredients` is the recipe
+  (bill of materials). Selling a burger deducts the bun, patty, cheese, lettuce, tomato and sauce
+  from raw stock, not just a unit of "burger".
+- **"A cashier opens one cash drawer session per shift"** — `shifts` enforces a single open
+  shift per user; every order is stamped with `shift_id`; closing compares counted cash against
+  `opening_cash + cash sales` and reports the variance.
+
+### Functional requirements
+- **Order modifiers** — pick "Extra cheese", "No onions", "Less ice", "Add fries" … at checkout.
+  Each modifier carries a price delta, is saved per line (`sale_item_modifiers`) and prints on the
+  kitchen ticket and the receipt.
+- **Kitchen queue** — new orders land as `queued`, then move `queued → preparing → completed`.
+  The kitchen board is live (polls the API, reloads only when something changed), shows waiting
+  time, and flags orders older than 10 minutes.
+- **Role separation** — cashiers are limited to checkout, the kitchen board and their own shift.
+  Every manager route is guarded server-side by `require_admin()`; a cashier POSTing directly to
+  a manager action is rejected and redirected, never silently allowed.
+- **Reporting** — sales by day, payment mix, top sellers, category split, **peak ordering hours**
+  (hourly bar chart with the busiest hour highlighted), cashier performance, inventory valuation,
+  and low-stock / low-ingredient warnings.
+- **Search** — instant client-side search across menu, products, ingredients, sales.
+
+### Non-functional requirements
+- **< 2 s response** — every page renders in ~2–4 ms locally (no framework, no external assets).
+- **Password security** — bcrypt via `password_hash()`, session fixation protection.
+- **Data integrity / ACID** — checkout runs inside a transaction and locks stock rows with
+  `FOR UPDATE`, so two tills can never oversell the last patty (verified: 3 simultaneous orders
+  for 1 remaining patty → 1 accepted, 2 rejected, stock 0).
+- **Controlled access** — CSRF tokens on every form and every AJAX call; PDO prepared statements
+  everywhere; output escaped through `e()`.
+- **Ease of use** — one-screen checkout with keyboard shortcuts (`F2` search, `F8` pay,
+  `Ctrl+Enter` charge), printable receipts.
 
 ---
 
-## 5. Folder map
+## 5. Walkthrough (5 minutes)
+
+1. Log in as **cashier** → **Cash Shifts → Open shift**, put ₱500 in the drawer.
+2. Go to **Point of Sale** → tap **Carlo's Special Burger** → choose **Extra cheese** → **Pay** → **Cash ₱200**.
+3. Open **Kitchen** — the ticket is there with the modifier chip. Press **Start preparing** → **Mark served**.
+4. Check **Ingredients → Stock movements** — the patty, bun, cheese, lettuce, tomato and sauce
+   have each been deducted.
+5. Back in **Cash Shifts → Close shift**, count the drawer; the variance shows immediately.
+6. Log in as **admin** → **Reports** → see peak hours, best sellers and stock valuation.
+7. **Recipes → Edit** on any item to change how much of each ingredient one serving consumes —
+   the next sale follows the new recipe.
+
+---
+
+## 6. Project structure
 
 ```
-Carlos-pos/
-├─ index.php               front controller (all screens: index.php?page=…)
-├─ api.php                 JSON API used by the POS (search + checkout)
-├─ install.php             one-click database installer
-├─ config/config.php       ← your DB credentials + app name/timezone
-├─ app/
-│  ├─ bootstrap.php        session, config, DB, settings cache
-│  ├─ db.php               PDO connection + query helpers
-│  ├─ helpers.php          escaping, money, CSRF, auth, settings, CSV
-│  ├─ controllers/         auth, pos, products, sales, reports, settings, errors
-│  └─ views/               one file per screen + layout/header|footer
-├─ assets/                 css/app.css, js/app.js, js/pos.js
-├─ database/Carlos_pos.sql  schema + demo catalogue
-└─ storage/                installer lock file (keep writable)
+Carlos-pos-main/
+├── index.php               front controller (route table + role gates)
+├── install.php             guided installer (delete after setup)
+├── app/
+│   ├── bootstrap.php       session, autoload, DB bootstrap
+│   ├── db.php              PDO connection + query helpers
+│   ├── helpers.php         money, csrf, auth, stock, esc helpers
+│   ├── controllers/        auth, pos, api, products, inventory (recipes + modifiers),
+│   │                       kitchen, shifts, sales, reports, users, settings
+│   └── views/              layout, login + one view per page (pos, kitchen, shifts,
+│                           ingredients, recipes, modifiers, sales, reports, …)
+├── assets/
+│   ├── css/app.css         full theme (no CDN, no webfonts)
+│   └── js/{app.js,pos.js}  checkout UI, modifier dialog, live kitchen board, charts
+└── database/
+    ├── Carlos_pos.sql      full schema + Carlo's Burger demo data (fresh install)
+    └── migrate_v2.sql      idempotent v1 → v2 upgrade for existing installs
 ```
 
 ---
 
-## 6. Tweaking it
+## 7. Notes
 
-**Change prices/stock quickly:** *Products* → *Edit* → adjust *Stock on hand* or use **Adjust stock** for deliveries and damages (every change is logged under *Recent movements*).
-
-**Tax:** *Settings → Currency & tax*. Use **exclusive** if you add tax on top of the shelf price, **inclusive** if your prices already include it. Individual products can be flagged **Tax exempt**.
-
-**Currency:** set any symbol (₱, $, €, £…) and whether it prints before or after the amount.
-
-**Add a product:** *Products → Add product*. Barcode is optional but handy for scanning.
-
----
-
-## 7. Backups
-
-- **phpMyAdmin:** select `Carlos_pos` → *Export* → *Go* (keeps a `.sql` snapshot).
-- **Or** use the built-in *Export CSV* buttons on Products, Sales and Reports for spreadsheets.
-
----
-
-## 8. Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| *"The app could not reach the database"* | Make sure MySQL is started in XAMPP; check `config/config.php` (host `localhost`, user `root`, empty password). |
-| Blank white page | Turn on `APP_DEBUG` in `config/config.php` and check `C:\xampp\php\logs\php_error_log`. |
-| Installer says `config/config.php is not writable` | Edit that file by hand with the same host/db/user/password you typed. |
-| Page loads but styles are missing | Make sure the whole `assets/` folder was copied. |
-| `404` on every page but the first | You're probably opening files directly instead of through `http://localhost/…`. |
-| Wrong time on receipts | Change `APP_TIMEZONE` in `config/config.php` (e.g. `Asia/Manila`). |
-| Receipt prints on A4 with lots of white space | Use your browser's print dialog → set paper size/margins, or switch to 58 mm in *Settings*. |
-
----
-
-## 9. Requirements
-
-- XAMPP for Windows (or any Apache + PHP 7.4/8.x + MySQL 5.7+/MariaDB 10.2+ stack)
-- PHP extensions: `pdo_mysql` (enabled by default in XAMPP). No Composer, no `mbstring` dependency.
-- A modern browser (Chrome, Edge, Firefox, Safari)
-
-Licensed freely for personal and small-business use.
+- The database connection defaults to `root` with an empty password on `127.0.0.1`;
+  change it in `app/db.php` (or let `install.php` write it for you).
+- Tax is **inclusive** by default at 12%; change it in **Settings**.
+- `database/Carlos_pos.sql` is safe to re-run (uses `CREATE TABLE IF NOT EXISTS` / `INSERT IGNORE`).
+- To reset the demo data: drop the database and re-import `Carlos_pos.sql`.

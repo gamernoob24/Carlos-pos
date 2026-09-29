@@ -1,26 +1,33 @@
 <?php
 /**
- * Carlos POS Web — front controller
+ * Carlo's Burger POS — front controller
  * ------------------------------------------------------------
  * Every screen is reached through  index.php?page=...
+ *
+ * auth:  public = anyone | user = any signed-in user | admin = manager only
+ * (SRS: cashiers get the checkout screen and their own shift session;
+ *  managers additionally get menu, inventory, sales and reports.)
  */
 
 require_once __DIR__ . '/app/bootstrap.php';
 
-/**
- * page => [controller file, action, requires login]
- */
 $routes = [
-    'login'      => ['auth',      'login',      false],
-    'logout'     => ['auth',      'logout',     false],
-    'pos'        => ['pos',       'pos',        true],
-    'products'   => ['products',  'products',   true],
-    'categories' => ['products',  'categories', true],
-    'sales'      => ['sales',     'sales',      true],
-    'sale'       => ['sales',     'sale_view',  true],
-    'reports'    => ['reports',   'reports',    true],
-    'settings'   => ['settings',  'settings',   true],
-    'users'      => ['settings',  'users',      true],
+    // page          controller     action          auth
+    'login'      => ['auth',      'login',      'public'],
+    'logout'     => ['auth',      'logout',     'public'],
+    'pos'        => ['pos',       'pos',        'user'],
+    'kitchen'    => ['kitchen',   'kitchen',    'user'],
+    'shifts'     => ['shifts',    'shifts',     'user'],
+    'sale'       => ['sales',     'sale_view',  'user'],   // receipt printing
+    'settings'   => ['settings',  'settings',   'user'],   // business settings admin-gated inside
+    'products'   => ['products',  'products',   'admin'],
+    'categories' => ['products',  'categories', 'admin'],
+    'inventory'  => ['inventory', 'ingredients','admin'],
+    'recipes'    => ['inventory', 'recipes',    'admin'],
+    'modifiers'  => ['inventory', 'modifiers',  'admin'],
+    'sales'      => ['sales',     'sales',      'admin'],
+    'reports'    => ['reports',   'reports',    'admin'],
+    'users'      => ['settings',  'users',      'admin'],
 ];
 
 $page = get('page', 'pos');
@@ -33,7 +40,10 @@ if (!isset($routes[$page])) {
     [$controllerFile, $action] = $routes[$page];
 }
 
-if ($routes[$page][2] ?? true) {
+/* ---- access control ---- */
+if ($routes[$page][2] === 'admin') {
+    require_admin();
+} elseif ($routes[$page][2] === 'user') {
     require_login();
 }
 csrf_guard();

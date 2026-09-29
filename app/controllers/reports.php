@@ -13,7 +13,8 @@ function reports_controller()
     $to   = (string) get('to', date('Y-m-d'));
     $p    = [$from, $to];
 
-    $done = "s.status = 'completed' AND DATE(s.created_at) BETWEEN ? AND ?";
+    // queued / preparing / completed all count as real sales; only voids are excluded
+    $done = "s.status <> 'voided' AND DATE(s.created_at) BETWEEN ? AND ?";
 
     /* ---------- headline numbers ---------- */
     $summary = db_one(
@@ -106,12 +107,34 @@ function reports_controller()
         $p
     );
 
+    /* ---------- peak hours (SRS: plan morning prep) ---------- */
+    $byHour = db_all(
+        "SELECT HOUR(s.created_at) AS hr, COUNT(*) AS cnt, COALESCE(SUM(s.total),0) AS total,
+                COALESCE(SUM(CASE WHEN s.payment_method='cash' THEN s.total ELSE 0 END),0) AS cash_total
+           FROM sales s WHERE $done
+          GROUP BY HOUR(s.created_at)
+          ORDER BY hr ASC",
+        $p
+    );
+
+    $peak = null;
+    $hourMax = 0.0;
+    foreach ($byHour as $h) {
+        if ((float) $h['total'] > $hourMax) {
+            $hourMax = (float) $h['total'];
+            $peak = $h;
+        }
+    }
+
     /* ---------- inventory snapshot ---------- */
     $stock = [
         'products' => (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1'),
         'value'    => (float) db_val('SELECT COALESCE(SUM(cost_price*stock_qty),0) FROM products WHERE active = 1'),
         'retail'   => (float) db_val('SELECT COALESCE(SUM(selling_price*stock_qty),0) FROM products WHERE active = 1'),
         'low'      => (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1 AND stock_qty <= reorder_level'),
+        'ingredients'     => (int) db_val('SELECT COUNT(*) FROM ingredients WHERE active = 1'),
+        'lowIngredients'  => (int) db_val('SELECT COUNT(*) FROM ingredients WHERE active = 1 AND stock_qty <= reorder_level'),
+        'ingredientValue' => (float) db_val('SELECT COALESCE(SUM(stock_qty*cost_per_unit),0) FROM ingredients WHERE active = 1'),
     ];
 
     return [
@@ -124,6 +147,8 @@ function reports_controller()
         'byCategory'  => $byCategory,
         'byCashier'   => $byCashier,
         'timeline'    => $timeline,
+        'byHour'      => $byHour,
+        'peak'        => $peak,
         'stock'       => $stock,
     ];
 }
@@ -133,7 +158,8 @@ function reports_export()
     $from = (string) get('from', date('Y-m-d'));
     $to   = (string) get('to', date('Y-m-d'));
     $p    = [$from, $to];
-    $done = "s.status = 'completed' AND DATE(s.created_at) BETWEEN ? AND ?";
+    // queued / preparing / completed all count as real sales; only voids are excluded
+    $done = "s.status <> 'voided' AND DATE(s.created_at) BETWEEN ? AND ?";
 
     $rows = db_all(
         "SELECT si.product_name, si.sku, SUM(si.qty) AS qty_sold,

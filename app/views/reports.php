@@ -119,6 +119,31 @@ $quick = [
 </div>
 
 <div class="grid-2">
+  <div class="card span-2">
+    <div class="card-head">
+      <h3>Peak ordering hours</h3>
+      <?php if ($data['peak']): ?>
+        <span class="muted small">Busiest hour: <strong><?= e(str_pad((string) $data['peak']['hr'], 2, '0', STR_PAD_LEFT)) ?>:00</strong>
+          · <?= e(money($data['peak']['total'])) ?> in <?= e($data['peak']['cnt']) ?> orders</span>
+      <?php endif; ?>
+    </div>
+    <?php if (!$data['byHour']): ?>
+      <p class="empty">No sales in this range yet — the hourly picture fills in as orders come in.</p>
+    <?php else: ?>
+      <?php $hMax = 0.0; foreach ($data['byHour'] as $h) { $hMax = max($hMax, (float) $h['total']); } ?>
+      <div class="bars" style="height:170px">
+        <?php foreach ($data['byHour'] as $h): ?>
+          <div class="bar-col" title="<?= e(str_pad((string) $h['hr'], 2, '0', STR_PAD_LEFT)) ?>:00 — <?= e(money($h['total'])) ?> (<?= e($h['cnt']) ?> orders)">
+            <div class="bar<?= $data['peak'] && (int) $h['hr'] === (int) $data['peak']['hr'] ? ' bar-peak' : '' ?>"
+                 style="height:<?= $hMax > 0 ? max(3, round(((float) $h['total'] / $hMax) * 100)) : 3 ?>%"></div>
+            <span class="bar-label"><?= e(str_pad((string) $h['hr'], 2, '0', STR_PAD_LEFT)) ?></span>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <p class="muted small">Use this to plan morning prep — slice onions and pre-cook patties for the hours that consistently spike.</p>
+    <?php endif; ?>
+  </div>
+
   <div class="card">
     <div class="card-head"><h3>Cashier performance</h3></div>
     <div class="table-wrap">
@@ -149,6 +174,9 @@ $quick = [
       <div class="kpi"><span>Stock at cost</span><strong><?= e(money($data['stock']['value'])) ?></strong></div>
       <div class="kpi"><span>Stock at retail</span><strong><?= e(money($data['stock']['retail'])) ?></strong></div>
       <div class="kpi"><span>Low stock items</span><strong class="<?= $data['stock']['low'] > 0 ? 'text-bad' : '' ?>"><?= e($data['stock']['low']) ?></strong></div>
+      <div class="kpi"><span>Ingredients tracked</span><strong><?= e(number_format($data['stock']['ingredients'])) ?></strong></div>
+      <div class="kpi"><span>Raw stock at cost</span><strong><?= e(money($data['stock']['ingredientValue'])) ?></strong></div>
+      <div class="kpi"><span>Low ingredients</span><strong class="<?= $data['stock']['lowIngredients'] > 0 ? 'text-bad' : '' ?>"><?= e($data['stock']['lowIngredients']) ?></strong></div>
     </div>
   </div>
 </div>

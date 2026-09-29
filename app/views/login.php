@@ -28,10 +28,4 @@
     </label>
     <button class="btn btn-primary btn-block btn-lg" type="submit">Sign in</button>
   </form>
-
-  <div class="auth-hint">
-    <strong>Default accounts</strong>
-    <code>admin</code> / <code>admin123</code> &nbsp;·&nbsp; <code>cashier</code> / <code>cashier123</code>
-    <small>Change these passwords under <em>Settings → Users</em> before going live.</small>
-  </div>
 </div>

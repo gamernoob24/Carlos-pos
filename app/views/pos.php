@@ -1,9 +1,11 @@
 <?php
 /** @var array $data */
-$products  = $data['products'];
-$categories= $data['categories'];
-$recent    = $data['recent'];
-$jsSettings= $data['jsSettings'];
+$products   = $data['products'];
+$categories = $data['categories'];
+$modifiers  = $data['modifiers'];
+$recent     = $data['recent'];
+$shift      = $data['shift'];
+$jsSettings = $data['jsSettings'];
 ?>
 <div class="pos">
 
@@ -13,7 +15,7 @@ $jsSettings= $data['jsSettings'];
       <div class="search-wrap">
         <span class="search-ico" aria-hidden="true"></span>
         <input id="productSearch" type="search" autocomplete="off" autofocus
-               placeholder="Search by name, SKU or scan barcode  (F2)">
+               placeholder="Search menu items, SKU or scan barcode  (F2)">
         <kbd class="search-kbd">F2</kbd>
       </div>
       <div class="chips" id="categoryChips">
@@ -21,25 +23,41 @@ $jsSettings= $data['jsSettings'];
         <?php foreach ($categories as $c): ?>
           <button type="button" class="chip" data-cat="<?= e($c['id']) ?>"><?= e($c['name']) ?></button>
         <?php endforeach; ?>
+        <a class="chip chip-link" href="<?= e(base_url('index.php?page=kitchen')) ?>">
+          Kitchen queue <strong><?= e($data['openOrders']) ?></strong>
+        </a>
       </div>
     </div>
 
     <div class="product-grid" id="productGrid"></div>
-    <p class="empty-grid" id="emptyGrid" hidden>No products match that search.</p>
+    <p class="empty-grid" id="emptyGrid" hidden>No menu items match that search.</p>
   </section>
 
   <!-- ====================== CART ======================= -->
   <aside class="pos-cart">
     <div class="cart-head">
-      <h2>Current Sale</h2>
+      <h2>Current Order</h2>
+      <?php if ($shift): ?>
+        <div class="shift-badge ok">
+          <span class="dot"></span>
+          Shift open <?= e(date('h:i A', strtotime($shift['opened_at']))) ?>
+          · drawer <?= e(money($shift['opening_cash'])) ?>
+        </div>
+      <?php else: ?>
+        <div class="shift-badge warn">
+          <span class="dot"></span>
+          No open shift —
+          <a href="<?= e(base_url('index.php?page=shifts')) ?>">open a drawer</a>
+        </div>
+      <?php endif; ?>
       <input id="customerName" type="text" class="input" placeholder="Customer name (optional)" autocomplete="off">
     </div>
 
     <div class="cart-lines" id="cartLines">
       <div class="cart-empty" id="cartEmpty">
         <div class="cart-empty-ico"></div>
-        <p>Cart is empty</p>
-        <small>Click a product or scan a barcode to begin</small>
+        <p>Order is empty</p>
+        <small>Tap a menu item, then use “Modify” for extra cheese, no onions…</small>
       </div>
     </div>
 
@@ -82,7 +100,7 @@ $jsSettings= $data['jsSettings'];
       <div class="cart-actions">
         <button type="button" class="btn btn-ghost" id="btnClear">Clear <kbd>Esc</kbd></button>
         <button type="button" class="btn btn-primary btn-lg" id="btnCheckout" disabled>
-          Complete Sale <kbd>F8</kbd>
+          Send to kitchen <kbd>F8</kbd>
         </button>
       </div>
       <p class="error-line" id="posError" hidden></p>
@@ -94,7 +112,7 @@ $jsSettings= $data['jsSettings'];
 <div class="modal" id="successModal" hidden>
   <div class="modal-card">
     <div class="success-mark">✓</div>
-    <h3>Sale completed</h3>
+    <h3>Order sent to kitchen</h3>
     <p class="success-no" id="successNo"></p>
     <dl class="success-totals">
       <div><dt>Total</dt><dd id="successTotal"></dd></div>
@@ -103,25 +121,41 @@ $jsSettings= $data['jsSettings'];
     </dl>
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" id="btnPrint">Print receipt</button>
-      <button type="button" class="btn btn-primary" id="btnNewSale">New sale</button>
+      <button type="button" class="btn btn-ghost" id="btnKitchen">Kitchen</button>
+      <button type="button" class="btn btn-primary" id="btnNewSale">New order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================== MODIFIER DIALOG ================= -->
+<div class="modal" id="modifierModal" hidden>
+  <div class="modal-card">
+    <h3 id="modTitle">Modify item</h3>
+    <p class="muted small" id="modSub"></p>
+    <div class="mod-list" id="modList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+      <button type="button" class="btn btn-primary" id="modDone">Done</button>
     </div>
   </div>
 </div>
 
 <?php if (count($recent) > 0): ?>
 <div class="card recent-card">
-  <div class="card-head"><h3>Recent sales</h3>
+  <div class="card-head"><h3>Recent orders</h3>
     <a class="link" href="<?= e(base_url('index.php?page=sales')) ?>">View all</a>
   </div>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Sale</th><th>Time</th><th>Payment</th><th class="right">Total</th><th></th></tr></thead>
+      <thead><tr><th>Order</th><th>Time</th><th>Payment</th><th>Kitchen</th><th class="right">Total</th><th></th></tr></thead>
       <tbody>
       <?php foreach ($recent as $s): ?>
+        <?php [$label, $cls] = order_status_meta($s['status']); ?>
         <tr class="<?= $s['status'] === 'voided' ? 'row-voided' : '' ?>">
           <td><strong><?= e($s['sale_no']) ?></strong></td>
           <td><?= e(fmt_date($s['created_at'])) ?></td>
           <td><span class="pill pill-<?= e($s['payment_method']) ?>"><?= e(ucfirst($s['payment_method'])) ?></span></td>
+          <td><span class="pill <?= e($cls) ?>"><?= e($label) ?></span></td>
           <td class="right"><?= e(money($s['total'])) ?></td>
           <td class="right">
             <a class="btn btn-sm btn-ghost" href="<?= e(base_url('index.php?page=sale&id=' . $s['id'])) ?>">View</a>
@@ -135,6 +169,7 @@ $jsSettings= $data['jsSettings'];
 <?php endif; ?>
 
 <script>
-  window.POS_PRODUCTS = <?= json_encode($products, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
-  window.POS_SETTINGS = <?= json_encode($jsSettings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
+  window.POS_PRODUCTS  = <?= json_encode($products, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
+  window.POS_MODIFIERS = <?= json_encode($modifiers, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
+  window.POS_SETTINGS  = <?= json_encode($jsSettings, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
 </script>

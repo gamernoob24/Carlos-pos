@@ -8,6 +8,16 @@ $voided = $sale['status'] === 'voided';
   <a class="btn btn-ghost" href="<?= e(base_url('index.php?page=sales')) ?>">← Back to sales</a>
   <a class="btn btn-ghost" href="<?= e(base_url('index.php?page=pos')) ?>">New sale</a>
   <button class="btn btn-primary" type="button" id="printBtn">Print receipt</button>
+  <?php if ($sale['status'] === 'queued' || $sale['status'] === 'preparing'): ?>
+    <form method="post" action="<?= e(base_url('index.php?page=kitchen&action=advance')) ?>" class="inline">
+      <?= csrf_field() ?>
+      <input type="hidden" name="id" value="<?= e($sale['id']) ?>">
+      <input type="hidden" name="to" value="<?= $sale['status'] === 'queued' ? 'preparing' : 'completed' ?>">
+      <button class="btn btn-ghost" type="submit">
+        <?= $sale['status'] === 'queued' ? 'Start preparing' : 'Mark served' ?>
+      </button>
+    </form>
+  <?php endif; ?>
   <?php if (!$voided && is_admin()): ?>
     <button class="btn btn-danger" type="button"
             data-void-sale="<?= e($sale['id']) ?>" data-sale-no="<?= e($sale['sale_no']) ?>">Void sale</button>
@@ -25,6 +35,9 @@ $voided = $sale['status'] === 'voided';
 
     <?php if ($voided): ?>
       <div class="r-voided">*** VOIDED ***</div>
+    <?php else: ?>
+      <?php [$stLabel] = order_status_meta($sale['status']); ?>
+      <div class="r-status">Kitchen: <?= e($stLabel) ?></div>
     <?php endif; ?>
 
     <div class="r-meta">
@@ -46,6 +59,13 @@ $voided = $sale['status'] === 'voided';
           <td>
             <?= e($i['product_name']) ?>
             <div class="r-sku"><?= e($i['sku']) ?></div>
+            <?php if (!empty($i['modifiers'])): ?>
+              <div class="r-mods">
+                <?php foreach ($i['modifiers'] as $m): ?>
+                  <div>· <?= e($m['modifier_name']) ?><?= (float) $m['price_delta'] > 0 ? ' (+' . e(money($m['price_delta'])) . ')' : '' ?></div>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
             <?php if ((float) $i['discount_amount'] > 0): ?>
               <div class="r-disc">less discount -<?= e(money($i['discount_amount'])) ?></div>
             <?php endif; ?>

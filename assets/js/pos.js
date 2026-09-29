@@ -1,47 +1,56 @@
 /* ============================================================
-   Carlos POS Web — point of sale screen
+   Carlo's Burger POS — point of sale screen
    ============================================================ */
 (function () {
   'use strict';
 
-  var PRODUCTS = window.POS_PRODUCTS || [];
-  var SET      = window.POS_SETTINGS || {};
-  var cart     = [];
+  var PRODUCTS  = window.POS_PRODUCTS || [];
+  var MODIFIERS = window.POS_MODIFIERS || [];
+  var SET       = window.POS_SETTINGS || {};
+  var cart      = [];
   var filterText = '';
   var filterCat  = 0;
+  var editingLine = -1;
 
   var el = {
-    grid:      document.getElementById('productGrid'),
-    emptyGrid: document.getElementById('emptyGrid'),
-    search:    document.getElementById('productSearch'),
-    chips:     document.getElementById('categoryChips'),
-    lines:     document.getElementById('cartLines'),
-    cartEmpty: document.getElementById('cartEmpty'),
-    customer:  document.getElementById('customerName'),
-    discVal:   document.getElementById('discountValue'),
-    discType:  document.getElementById('discountType'),
-    sub:       document.getElementById('sumSubtotal'),
-    disc:      document.getElementById('sumDiscount'),
-    tax:       document.getElementById('sumTax'),
-    total:     document.getElementById('sumTotal'),
-    payWrap:   document.getElementById('payMethods'),
-    cashRow:   document.getElementById('cashRow'),
-    cash:      document.getElementById('cashInput'),
-    quick:     document.getElementById('quickCash'),
-    change:    document.getElementById('changeDue'),
-    btnClear:  document.getElementById('btnClear'),
-    btnPay:    document.getElementById('btnCheckout'),
-    error:     document.getElementById('posError'),
-    modal:     document.getElementById('successModal'),
-    mNo:       document.getElementById('successNo'),
-    mTotal:    document.getElementById('successTotal'),
-    mPaid:     document.getElementById('successPaid'),
-    mChange:   document.getElementById('successChange'),
-    btnPrint:  document.getElementById('btnPrint'),
-    btnNew:    document.getElementById('btnNewSale')
+    grid:       document.getElementById('productGrid'),
+    emptyGrid:  document.getElementById('emptyGrid'),
+    search:     document.getElementById('productSearch'),
+    chips:      document.getElementById('categoryChips'),
+    lines:      document.getElementById('cartLines'),
+    cartEmpty:  document.getElementById('cartEmpty'),
+    customer:   document.getElementById('customerName'),
+    discVal:    document.getElementById('discountValue'),
+    discType:   document.getElementById('discountType'),
+    sub:        document.getElementById('sumSubtotal'),
+    disc:       document.getElementById('sumDiscount'),
+    tax:        document.getElementById('sumTax'),
+    total:      document.getElementById('sumTotal'),
+    payWrap:    document.getElementById('payMethods'),
+    cashRow:    document.getElementById('cashRow'),
+    cash:       document.getElementById('cashInput'),
+    quick:      document.getElementById('quickCash'),
+    change:     document.getElementById('changeDue'),
+    btnClear:   document.getElementById('btnClear'),
+    btnPay:     document.getElementById('btnCheckout'),
+    error:      document.getElementById('posError'),
+    modal:      document.getElementById('successModal'),
+    mNo:        document.getElementById('successNo'),
+    mTotal:     document.getElementById('successTotal'),
+    mPaid:      document.getElementById('successPaid'),
+    mChange:    document.getElementById('successChange'),
+    btnPrint:   document.getElementById('btnPrint'),
+    btnKitchen: document.getElementById('btnKitchen'),
+    btnNew:     document.getElementById('btnNewSale'),
+    modModal:   document.getElementById('modifierModal'),
+    modList:    document.getElementById('modList'),
+    modTitle:   document.getElementById('modTitle'),
+    modSub:     document.getElementById('modSub'),
+    modDone:    document.getElementById('modDone')
   };
 
   var method = 'cash';
+  var lastKitchenUrl = 'index.php?page=kitchen';
 
   /* ---------------------- helpers ---------------------- */
   function money(n) {
@@ -54,9 +63,12 @@
   }
 
   function round2(n) { return Math.round(Number(n) * 100) / 100; }
+  function qty(n) { return (Math.round(Number(n) * 1000) / 1000).toString(); }
 
-  function qty(n) {
-    return (Math.round(Number(n) * 1000) / 1000).toString();
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
   }
 
   function err(msg) {
@@ -101,12 +113,6 @@
     if (el.emptyGrid) el.emptyGrid.hidden = shown !== 0;
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
   function findProduct(id) {
     for (var i = 0; i < PRODUCTS.length; i++) {
       if (PRODUCTS[i].id === Number(id)) return PRODUCTS[i];
@@ -122,7 +128,7 @@
       return;
     }
     for (var i = 0; i < cart.length; i++) {
-      if (cart[i].id === product.id) {
+      if (cart[i].id === product.id && cart[i].modifiers.length === 0) {
         if (!SET.allowNegative && cart[i].qty + 1 > product.stock) {
           err('Only ' + qty(product.stock) + ' of "' + product.name + '" available.');
           return;
@@ -134,9 +140,16 @@
     }
     cart.push({
       id: product.id, name: product.name, sku: product.sku, price: product.price,
-      qty: 1, stock: product.stock, unit: product.unit || 'pc', tax_exempt: !!product.tax_exempt
+      qty: 1, stock: product.stock, unit: product.unit || 'pc',
+      tax_exempt: !!product.tax_exempt, modifiers: []
     });
     renderCart();
+  }
+
+  function lineUnitPrice(item) {
+    var extra = 0;
+    for (var i = 0; i < item.modifiers.length; i++) extra += item.modifiers[i].delta;
+    return round2(item.price + extra);
   }
 
   function changeQty(index, delta) {
@@ -161,26 +174,41 @@
     }
     el.cartEmpty.hidden = true;
 
-    // remove old lines
     var old = el.lines.querySelectorAll('.cart-line');
     for (var i = 0; i < old.length; i++) old[i].remove();
 
     for (var c = 0; c < cart.length; c++) {
-      var item = cart[c];
-      var amount = round2(item.price * item.qty);
-      var div = document.createElement('div');
+      var item   = cart[c];
+      var unit   = lineUnitPrice(item);
+      var amount = round2(unit * item.qty);
+      var div    = document.createElement('div');
+      var mods   = '';
+      if (item.modifiers.length) {
+        mods = '<div class="cl-mods">';
+        for (var m = 0; m < item.modifiers.length; m++) {
+          var md = item.modifiers[m];
+          mods += '<span class="mod-chip">' + escapeHtml(md.name) +
+                  (md.delta ? ' <b>+' + money(md.delta) + '</b>' : '') + '</span>';
+        }
+        mods += '</div>';
+      }
+
       div.className = 'cart-line';
       div.innerHTML =
         '<div>' +
           '<div class="cl-name">' + escapeHtml(item.name) + '</div>' +
-          '<div class="cl-sub">' + money(item.price) + ' × ' + qty(item.qty) + ' ' + escapeHtml(item.unit) +
+          '<div class="cl-sub">' + money(item.price) +
+            (item.modifiers.length ? ' <span class="muted">+ extras</span>' : '') +
+            ' × ' + qty(item.qty) + ' ' + escapeHtml(item.unit) +
             (item.tax_exempt ? ' · tax exempt' : '') + '</div>' +
+          mods +
         '</div>' +
         '<div class="cl-amount">' + money(amount) + '</div>' +
         '<div class="cl-controls">' +
           '<button type="button" class="qty-btn" data-act="dec" data-i="' + c + '">−</button>' +
           '<span class="cl-qty">' + qty(item.qty) + '</span>' +
           '<button type="button" class="qty-btn" data-act="inc" data-i="' + c + '">+</button>' +
+          '<button type="button" class="cl-mod" data-act="mod" data-i="' + c + '">Modify</button>' +
           '<button type="button" class="cl-remove" data-act="del" data-i="' + c + '" title="Remove">✕</button>' +
         '</div>' +
         '<div></div>';
@@ -189,11 +217,56 @@
     updateTotals();
   }
 
+  /* ------------------- modifier dialog ---------------- */
+  function openModifiers(index) {
+    if (!cart[index]) return;
+    editingLine = index;
+    var item = cart[index];
+    el.modTitle.textContent = 'Modify: ' + item.name;
+    el.modSub.textContent   = 'Base price ' + money(item.price) + ' — choose extras or omissions.';
+
+    var html = '';
+    for (var i = 0; i < MODIFIERS.length; i++) {
+      var m = MODIFIERS[i];
+      var checked = false;
+      for (var j = 0; j < item.modifiers.length; j++) {
+        if (item.modifiers[j].id === m.id) { checked = true; break; }
+      }
+      html += '<label class="mod-row' + (checked ? ' on' : '') + '">' +
+                '<input type="checkbox" data-mod="' + m.id + '"' + (checked ? ' checked' : '') + '>' +
+                '<span class="mod-name">' + escapeHtml(m.name) + '</span>' +
+                '<span class="mod-price">' + (m.price_delta ? '+' + money(m.price_delta) : 'no charge') + '</span>' +
+              '</label>';
+    }
+    el.modList.innerHTML = html ||
+      '<p class="muted">No modifiers configured yet. A manager can add them under Inventory → Modifiers.</p>';
+    el.modModal.hidden = false;
+  }
+
+  function saveModifiers() {
+    if (editingLine < 0 || !cart[editingLine]) return;
+    var chosen = [];
+    var boxes = el.modList.querySelectorAll('input[data-mod]');
+    for (var i = 0; i < boxes.length; i++) {
+      if (!boxes[i].checked) continue;
+      var id = parseInt(boxes[i].getAttribute('data-mod'), 10);
+      for (var j = 0; j < MODIFIERS.length; j++) {
+        if (MODIFIERS[j].id === id) {
+          chosen.push({ id: id, name: MODIFIERS[j].name, delta: MODIFIERS[j].price_delta });
+        }
+      }
+    }
+    cart[editingLine].modifiers = chosen;
+    el.modModal.hidden = true;
+    editingLine = -1;
+    renderCart();
+  }
+
   /* --------------------- totals ----------------------- */
   function calc() {
     var subtotal = 0, taxableNet = 0, i;
     for (i = 0; i < cart.length; i++) {
-      var net = round2(cart[i].price * cart[i].qty);
+      var net = round2(lineUnitPrice(cart[i]) * cart[i].qty);
       subtotal += net;
       if (!cart[i].tax_exempt) taxableNet += net;
     }
@@ -220,21 +293,18 @@
     var cash = method === 'cash' ? (parseFloat(el.cash.value) || 0) : total;
     var change = method === 'cash' ? Math.max(0, round2(cash - total)) : 0;
 
-    return {
-      subtotal: subtotal, discount: discount, tax: tax, total: total,
-      paid: cash, change: change
-    };
+    return { subtotal: subtotal, discount: discount, tax: tax, total: total, paid: cash, change: change };
   }
 
   function updateTotals() {
     var t = calc();
-    el.sub.textContent   = money(t.subtotal);
-    el.disc.textContent  = '-' + money(t.discount);
-    el.tax.textContent   = money(t.tax);
-    el.total.textContent = money(t.total);
+    el.sub.textContent    = money(t.subtotal);
+    el.disc.textContent   = '-' + money(t.discount);
+    el.tax.textContent    = money(t.tax);
+    el.total.textContent  = money(t.total);
     el.change.textContent = money(t.change);
     el.change.style.color = t.change > 0 ? 'var(--ok)' : 'var(--muted)';
-    el.btnPay.disabled = cart.length === 0;
+    el.btnPay.disabled    = cart.length === 0;
     renderQuickCash(t.total);
   }
 
@@ -267,7 +337,14 @@
     }
 
     var payload = {
-      items: cart.map(function (i) { return { id: i.id, qty: i.qty, discount: 0 }; }),
+      items: cart.map(function (i) {
+        return {
+          id: i.id,
+          qty: i.qty,
+          discount: 0,
+          modifiers: i.modifiers.map(function (m) { return m.id; })
+        };
+      }),
       discount: { type: el.discType.value, value: parseFloat(el.discVal.value) || 0 },
       payment: { method: method, cash: method === 'cash' ? t.paid : t.total },
       customer: el.customer ? el.customer.value.trim() : '',
@@ -279,23 +356,16 @@
 
     fetch(SET.checkoutUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': SET.csrfToken
-      },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': SET.csrfToken },
       body: JSON.stringify(payload)
     })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         el.btnPay.disabled = false;
-        el.btnPay.innerHTML = 'Complete Sale <kbd>F8</kbd>';
+        el.btnPay.innerHTML = 'Send to kitchen <kbd>F8</kbd>';
 
-        if (!res.ok) {
-          err(res.error || 'Could not complete the sale.');
-          return;
-        }
+        if (!res.ok) { err(res.error || 'Could not complete the order.'); return; }
 
-        // reflect the new stock levels on screen
         for (var i = 0; i < cart.length; i++) {
           var p = findProduct(cart[i].id);
           if (p) p.stock = Math.round((p.stock - cart[i].qty) * 1000) / 1000;
@@ -306,6 +376,7 @@
         el.mPaid.textContent   = money(res.paid);
         el.mChange.textContent = money(res.change);
         el.modal.hidden = false;
+        if (res.kitchen_url) lastKitchenUrl = res.kitchen_url;
         el.btnPrint.setAttribute('data-url', res.receipt_url);
 
         cart = [];
@@ -314,8 +385,8 @@
       })
       .catch(function () {
         el.btnPay.disabled = false;
-        el.btnPay.innerHTML = 'Complete Sale <kbd>F8</kbd>';
-        err('Network error — the sale was not saved.');
+        el.btnPay.innerHTML = 'Send to kitchen <kbd>F8</kbd>';
+        err('Network error — the order was not saved.');
       });
   }
 
@@ -328,9 +399,7 @@
     setMethod('cash');
     renderCart();
     renderProducts();
-    if (el.search) el.search.value = '';
-    filterText = '';
-    if (el.search) el.search.focus();
+    if (el.search) { el.search.value = ''; filterText = ''; el.search.focus(); }
   }
 
   function setMethod(m) {
@@ -365,8 +434,18 @@
       if (act === 'inc') changeQty(i, 1);
       if (act === 'dec') changeQty(i, -1);
       if (act === 'del') { cart.splice(i, 1); renderCart(); }
+      if (act === 'mod') openModifiers(i);
     });
   }
+
+  if (el.modList) {
+    el.modList.addEventListener('change', function (ev) {
+      var row = ev.target.closest('.mod-row');
+      if (row) row.classList.toggle('on', ev.target.checked);
+    });
+  }
+
+  if (el.modDone) el.modDone.addEventListener('click', saveModifiers);
 
   if (el.search) {
     el.search.addEventListener('input', function () {
@@ -382,36 +461,26 @@
 
       var visible = el.grid.querySelectorAll('.product-card');
       if (visible.length === 1) {
-        var p = findProduct(visible[0].getAttribute('data-id'));
-        addToCart(p);
-        el.search.value = '';
-        filterText = '';
-        renderProducts();
+        addToCart(findProduct(visible[0].getAttribute('data-id')));
+        el.search.value = ''; filterText = ''; renderProducts();
         return;
       }
 
-      // fall back to a server lookup (handles barcodes beyond the loaded page)
       fetch(SET.searchUrl + '&q=' + encodeURIComponent(q))
         .then(function (r) { return r.json(); })
         .then(function (res) {
-          if (!res.ok || !res.products || !res.products.length) {
-            err('No product matches "' + q + '".');
-            return;
-          }
+          if (!res.ok || !res.products || !res.products.length) { err('No menu item matches "' + q + '".'); return; }
           var hit = null;
           for (var i = 0; i < res.products.length; i++) {
             var c = res.products[i];
             if (String(c.barcode) === q || String(c.sku).toLowerCase() === q.toLowerCase()) { hit = c; break; }
           }
           if (!hit && res.products.length === 1) hit = res.products[0];
-          if (!hit) { err('No product matches "' + q + '".'); return; }
-
+          if (!hit) { err('No menu item matches "' + q + '".'); return; }
           var local = findProduct(hit.id);
           if (!local) { PRODUCTS.push(hit); local = hit; }
           addToCart(local);
-          el.search.value = '';
-          filterText = '';
-          renderProducts();
+          el.search.value = ''; filterText = ''; renderProducts();
         })
         .catch(function () { err('Lookup failed.'); });
     });
@@ -420,8 +489,8 @@
   if (el.chips) {
     el.chips.addEventListener('click', function (ev) {
       var chip = ev.target.closest('.chip');
-      if (!chip) return;
-      var all = el.chips.querySelectorAll('.chip');
+      if (!chip || chip.tagName === 'A') return;
+      var all = el.chips.querySelectorAll('button.chip');
       for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
       chip.classList.add('active');
       filterCat = parseInt(chip.getAttribute('data-cat'), 10) || 0;
@@ -451,7 +520,7 @@
 
   if (el.btnClear) el.btnClear.addEventListener('click', function () {
     if (!cart.length) return;
-    if (window.confirm('Clear the current sale?')) resetSale();
+    if (window.confirm('Clear the current order?')) resetSale();
   });
 
   if (el.btnPay) el.btnPay.addEventListener('click', checkout);
@@ -460,6 +529,12 @@
     var url = el.btnPrint.getAttribute('data-url');
     if (url) window.open(url, '_blank');
   });
+
+  if (el.btnKitchen) {
+    el.btnKitchen.addEventListener('click', function () {
+      window.location.href = lastKitchenUrl || 'index.php?page=kitchen';
+    });
+  }
 
   if (el.btnNew) el.btnNew.addEventListener('click', function () {
     el.modal.hidden = true;
@@ -477,8 +552,9 @@
       ev.preventDefault();
       if (cart.length) checkout();
     } else if (ev.key === 'Escape') {
+      if (el.modModal && !el.modModal.hidden) { el.modModal.hidden = true; return; }
       if (el.modal && !el.modal.hidden) { el.modal.hidden = true; return; }
-      if (cart.length && window.confirm('Clear the current sale?')) resetSale();
+      if (cart.length && window.confirm('Clear the current order?')) resetSale();
     }
   });
 

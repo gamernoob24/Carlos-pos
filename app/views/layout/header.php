@@ -7,17 +7,32 @@ $user     = $layout === 'app' ? current_user() : null;
 $flashes  = take_flash();
 $title    = $data['title'] ?? ucfirst($page ?? 'POS');
 $lowCount = 0;
+$lowIngredients = 0;
+$openOrders = 0;
 if ($layout === 'app') {
-    $lowCount = (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1 AND stock_qty <= reorder_level');
+    $lowCount       = (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1 AND stock_qty <= reorder_level');
+    $lowIngredients = (int) db_val('SELECT COUNT(*) FROM ingredients WHERE active = 1 AND stock_qty <= reorder_level');
+    $openOrders     = (int) db_val("SELECT COUNT(*) FROM sales WHERE status IN ('queued','preparing')");
 }
+
+/*
+ * SRS role split:
+ *   Cashier  → checkout screen + own shift session (+ kitchen board)
+ *   Manager  → everything, incl. menu, ingredients, recipes, sales & reports
+ */
 $navItems = [
-    'pos'        => ['Point of Sale', 'cart'],
-    'products'   => ['Products',      'box'],
-    'categories' => ['Categories',    'tag'],
-    'sales'      => ['Sales History', 'receipt'],
-    'reports'    => ['Reports',       'chart'],
-    'settings'   => ['Settings',      'gear'],
-    'users'      => ['Users',         'users'],
+    'pos'        => ['Point of Sale',   'cart',    'user'],
+    'kitchen'    => ['Kitchen Display', 'kitchen', 'user'],
+    'shifts'     => ['My Shift',        'drawer',  'user'],
+    'products'   => ['Menu Items',      'box',     'admin'],
+    'categories' => ['Categories',      'tag',     'admin'],
+    'inventory'  => ['Ingredients',     'leaf',    'admin'],
+    'recipes'    => ['Recipes',         'recipe',  'admin'],
+    'modifiers'  => ['Modifiers',       'plus',    'admin'],
+    'sales'      => ['Sales History',   'receipt', 'admin'],
+    'reports'    => ['Reports',         'chart',   'admin'],
+    'settings'   => ['Settings',        'gear',    'user'],
+    'users'      => ['Users',           'users',   'admin'],
 ];
 ?>
 <!DOCTYPE html>
@@ -44,13 +59,19 @@ $navItems = [
     </div>
 
     <nav class="nav">
-      <?php foreach ($navItems as $key => [$label, $icon]): ?>
-        <?php if ($key === 'users' && !is_admin()) { continue; } ?>
+      <?php foreach ($navItems as $key => [$label, $icon, $required]): ?>
+        <?php if ($required === 'admin' && !is_admin()) { continue; } ?>
         <a class="nav-link<?= $page === $key ? ' active' : '' ?>" href="<?= e(base_url('index.php?page=' . $key)) ?>">
           <span class="ico ico-<?= e($icon) ?>" aria-hidden="true"></span>
           <span class="nav-label"><?= e($label) ?></span>
           <?php if ($key === 'products' && $lowCount > 0): ?>
-            <span class="nav-badge" title="Low stock items"><?= e($lowCount) ?></span>
+            <span class="nav-badge" title="Menu items at or below reorder level"><?= e($lowCount) ?></span>
+          <?php endif; ?>
+          <?php if ($key === 'inventory' && $lowIngredients > 0): ?>
+            <span class="nav-badge" title="Ingredients at or below reorder level"><?= e($lowIngredients) ?></span>
+          <?php endif; ?>
+          <?php if ($key === 'kitchen' && $openOrders > 0): ?>
+            <span class="nav-badge" title="Orders waiting for the kitchen"><?= e($openOrders) ?></span>
           <?php endif; ?>
         </a>
       <?php endforeach; ?>
@@ -61,7 +82,7 @@ $navItems = [
         <div class="avatar"><?= e(initial($user['name'])) ?></div>
         <div>
           <strong><?= e($user['name']) ?></strong>
-          <span class="role"><?= e(ucfirst($user['role'])) ?></span>
+          <span class="role"><?= e(role_label($user['role'])) ?></span>
         </div>
       </div>
       <a class="btn btn-ghost btn-sm" href="<?= e(base_url('index.php?page=logout')) ?>">Sign out</a>

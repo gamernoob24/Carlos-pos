@@ -119,6 +119,7 @@ function products_controller()
 
 function products_save()
 {
+    require_admin(); // SRS: only managers may change menu items & stock
     $id   = (int) post('id', 0);
     $name = (string) post('name');
     $sku  = (string) post('sku');
@@ -169,6 +170,7 @@ function products_save()
 
 function products_delete()
 {
+    require_admin(); // SRS: only managers may change menu items & stock
     $id = (int) post('id', 0);
     if ($id > 0) {
         $used = (int) db_val('SELECT COUNT(*) FROM sale_items WHERE product_id = ?', [$id]);
@@ -186,6 +188,7 @@ function products_delete()
 
 function products_adjust()
 {
+    require_admin(); // SRS: only managers may change menu items & stock
     $id      = (int) post('id', 0);
     $delta   = post_num('qty_change');
     $reason  = (string) post('reason', 'Adjustment');
@@ -266,6 +269,7 @@ function categories_controller()
 
 function categories_save()
 {
+    require_admin(); // SRS: only managers may change menu items & stock
     $id   = (int) post('id', 0);
     $name = (string) post('name');
 
@@ -291,6 +295,7 @@ function categories_save()
 
 function categories_delete()
 {
+    require_admin(); // SRS: only managers may change menu items & stock
     $id = (int) post('id', 0);
     if ($id > 0) {
         db_delete('categories', 'id = ?', [$id]); // products fall back to "Uncategorized"
