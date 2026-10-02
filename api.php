@@ -1,12 +1,7 @@
 <?php
 /**
- * JSON API used by the POS and kitchen screens.
- * ------------------------------------------------------------
- *  GET  api.php?action=search&q=...      menu item lookup
- *  POST api.php?action=checkout          (JSON body)
- *  GET  api.php?action=kitchen_orders    live queue for the kitchen display
+ * Carlo's Burger POS — JSON API
  */
-
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/controllers/kitchen.php';
 
@@ -19,14 +14,12 @@ if (!is_logged_in()) {
 $action = (string) get('action', '');
 
 switch ($action) {
-
     /* -------------------------------------------------------------- */
     case 'search':
         $q = (string) get('q', '');
         if (trim($q) === '') {
             json_out(['ok' => true, 'products' => []]);
         }
-
         $like = '%' . $q . '%';
         $rows = db_all(
             'SELECT p.id, p.sku, p.barcode, p.name, p.selling_price, p.stock_qty,
@@ -38,37 +31,38 @@ switch ($action) {
               LIMIT 20',
             [$like, $like, $like, $q, $q]
         );
-
         json_out(['ok' => true, 'products' => array_map('api_product_shape', $rows)]);
+        break;
 
     /* -------------------------------------------------------------- */
     case 'kitchen_orders':
         json_out([
-            'ok'     => true,
+            'ok' => true,
             'orders' => array_map('api_order_shape', kitchen_orders()),
             'server' => date('H:i:s'),
         ]);
+        break;
 
     /* -------------------------------------------------------------- */
     case 'checkout':
         if (!is_post()) {
             json_out(['ok' => false, 'error' => 'Use POST for checkout.'], 405);
         }
-
         $sent = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         if (!hash_equals(csrf_token(), (string) $sent)) {
             json_out(['ok' => false, 'error' => 'Security token mismatch. Reload the page and retry.'], 400);
         }
-
         try {
             json_out(api_checkout(json_body()));
         } catch (Throwable $e) {
             json_out(['ok' => false, 'error' => $e->getMessage()], 422);
         }
+        break;
 
     /* -------------------------------------------------------------- */
     default:
         json_out(['ok' => false, 'error' => 'Unknown action.'], 404);
+        break;
 }
 
 /* ================================================================== */
@@ -78,15 +72,15 @@ switch ($action) {
 function api_product_shape(array $p)
 {
     return [
-        'id'            => (int) $p['id'],
-        'sku'           => $p['sku'],
-        'barcode'       => $p['barcode'],
-        'name'          => $p['name'],
-        'price'         => (float) $p['selling_price'],
-        'stock'         => (float) $p['stock_qty'],
-        'unit'          => $p['unit'] ?? 'pc',
-        'tax_exempt'    => (int) ($p['tax_exempt'] ?? 0),
-        'category_id'   => $p['category_id'] !== null ? (int) $p['category_id'] : null,
+        'id' => (int) $p['id'],
+        'sku' => $p['sku'],
+        'barcode' => $p['barcode'],
+        'name' => $p['name'],
+        'price' => (float) $p['selling_price'],
+        'stock' => (float) $p['stock_qty'],
+        'unit' => $p['unit'] ?? 'pc',
+        'tax_exempt' => (int) ($p['tax_exempt'] ?? 0),
+        'category_id' => $p['category_id'] !== null ? (int) $p['category_id'] : null,
         'category_name' => $p['category_name'] ?? null,
     ];
 }
@@ -94,17 +88,17 @@ function api_product_shape(array $p)
 function api_order_shape(array $o)
 {
     return [
-        'id'          => (int) $o['id'],
-        'sale_no'     => $o['sale_no'],
-        'status'      => $o['status'],
+        'id' => (int) $o['id'],
+        'sale_no' => $o['sale_no'],
+        'status' => $o['status'],
         'age_minutes' => (int) ($o['age_minutes'] ?? 0),
-        'created_at'  => $o['created_at'],
-        'customer'    => $o['customer_name'],
-        'cashier'     => $o['user_name'],
-        'items'       => array_map(function ($it) {
+        'created_at' => $o['created_at'],
+        'customer' => $o['customer_name'],
+        'cashier' => $o['user_name'],
+        'items' => array_map(function ($it) {
             return [
-                'name'      => $it['product_name'],
-                'qty'       => (float) $it['qty'],
+                'name' => $it['product_name'],
+                'qty' => (float) $it['qty'],
                 'modifiers' => array_map(function ($m) {
                     return ['name' => $m['modifier_name'], 'delta' => (float) $m['price_delta']];
                 }, $it['modifiers'] ?? []),
@@ -113,34 +107,27 @@ function api_order_shape(array $o)
     ];
 }
 
-/**
- * Validate the cart, persist the order, deduct product stock AND every
- * recipe ingredient, then queue the order for the kitchen.
- *
- * @return array
- * @throws RuntimeException|Throwable
- */
 function api_checkout(array $payload)
 {
-    $items    = $payload['items']    ?? [];
+    $items = $payload['items'] ?? [];
     $discount = $payload['discount'] ?? ['type' => 'fixed', 'value' => 0];
-    $payment  = $payload['payment']  ?? ['method' => 'cash', 'cash' => 0];
+    $payment = $payload['payment'] ?? ['method' => 'cash', 'cash' => 0];
     $customer = trim((string) ($payload['customer'] ?? ''));
-    $note     = trim((string) ($payload['note'] ?? ''));
+    $note = trim((string) ($payload['note'] ?? ''));
 
     if (!is_array($items) || count($items) === 0) {
         throw new RuntimeException('The cart is empty.');
     }
 
-    $taxRate  = (float) setting('tax_rate', '0');
-    $taxMode  = setting('tax_mode', 'inclusive');
+    $taxRate = (float) setting('tax_rate', '0');
+    $taxMode = setting('tax_mode', 'inclusive');
     $allowNeg = (int) setting('allow_negative_stock', '0');
     $decimals = (int) setting('decimal_places', '2');
 
     $method = in_array(($payment['method'] ?? 'cash'), ['cash', 'card', 'ewallet'], true)
         ? $payment['method'] : 'cash';
 
-    $user  = current_user();
+    $user = current_user();
     $shift = current_shift();
 
     /* ---------- available modifiers ---------- */
@@ -158,12 +145,12 @@ function api_checkout(array $payload)
             $requested[$pid] = ($requested[$pid] ?? 0) + $qty;
         }
     }
+
     if (!$requested) {
         throw new RuntimeException('No valid items in the cart.');
     }
 
     db()->beginTransaction();
-
     try {
         $placeholders = implode(',', array_fill(0, count($requested), '?'));
         $products = db_all(
@@ -179,11 +166,11 @@ function api_checkout(array $payload)
             $found[(int) $p['id']] = $p;
         }
 
-        $lines           = [];
-        $subtotal        = 0.0;
-        $taxableNet      = 0.0;
+        $lines = [];
+        $subtotal = 0.0;
+        $taxableNet = 0.0;
         $ingredientNeeds = [];
-        $lineRecipes     = [];
+        $lineRecipes = [];
 
         foreach ($items as $raw) {
             $pid = (int) ($raw['id'] ?? 0);
@@ -197,8 +184,8 @@ function api_checkout(array $payload)
 
             $p = $found[$pid];
 
-            /* --- chosen modifiers (extra cheese, no onions …) --- */
-            $chosen   = [];
+            /* --- chosen modifiers --- */
+            $chosen = [];
             $modTotal = 0.0;
             foreach ((array) ($raw['modifiers'] ?? []) as $mid) {
                 $mid = (int) $mid;
@@ -210,9 +197,9 @@ function api_checkout(array $payload)
             $modTotal = round($modTotal, 2);
 
             $unitPrice = round((float) $p['selling_price'] + $modTotal, 2);
-            $gross     = round($unitPrice * $qty, 2);
-            $lineDisc  = min(max(0, (float) ($raw['discount'] ?? 0)), $gross);
-            $net       = round($gross - $lineDisc, 2);
+            $gross = round($unitPrice * $qty, 2);
+            $lineDisc = min(max(0, (float) ($raw['discount'] ?? 0)), $gross);
+            $net = round($gross - $lineDisc, 2);
 
             if (!$allowNeg && (float) $p['stock_qty'] + 0.0001 < $qty) {
                 throw new RuntimeException(
@@ -222,18 +209,18 @@ function api_checkout(array $payload)
 
             $lines[] = [
                 'product_id' => $pid,
-                'sku'        => $p['sku'],
-                'name'       => $p['name'],
-                'qty'        => $qty,
-                'unit'       => $p['unit'],
+                'sku' => $p['sku'],
+                'name' => $p['name'],
+                'qty' => $qty,
+                'unit' => $p['unit'],
                 'base_price' => (float) $p['selling_price'],
                 'unit_price' => $unitPrice,
-                'modifiers'  => $chosen,
-                'mod_total'  => $modTotal,
-                'discount'   => $lineDisc,
-                'net'        => $net,
+                'modifiers' => $chosen,
+                'mod_total' => $modTotal,
+                'discount' => $lineDisc,
+                'net' => $net,
                 'tax_exempt' => (int) $p['tax_exempt'] === 1,
-                'stock'      => (float) $p['stock_qty'],
+                'stock' => (float) $p['stock_qty'],
             ];
 
             $subtotal += $net;
@@ -260,9 +247,8 @@ function api_checkout(array $payload)
         $subtotal = round($subtotal, 2);
 
         /* ---------- cart-level discount ---------- */
-        $dType  = ($discount['type'] ?? 'fixed') === 'percent' ? 'percent' : 'fixed';
+        $dType = ($discount['type'] ?? 'fixed') === 'percent' ? 'percent' : 'fixed';
         $dValue = max(0, (float) ($discount['value'] ?? 0));
-
         $cartDiscount = $dType === 'percent'
             ? round($subtotal * min(100, $dValue) / 100, 2)
             : round($dValue, 2);
@@ -271,7 +257,6 @@ function api_checkout(array $payload)
         /* ---------- tax ---------- */
         $share = $subtotal > 0 ? ($taxableNet / $subtotal) : 0;
         $taxableBase = round($taxableNet - ($cartDiscount * $share), 2);
-
         if ($taxRate > 0 && $taxableBase > 0) {
             $tax = $taxMode === 'inclusive'
                 ? round($taxableBase - ($taxableBase / (1 + $taxRate / 100)), 2)
@@ -281,7 +266,7 @@ function api_checkout(array $payload)
         }
 
         $netSales = round($subtotal - $cartDiscount, 2);
-        $total    = $taxMode === 'inclusive'
+        $total = $taxMode === 'inclusive'
             ? round($netSales, 2)
             : round($netSales + $tax, 2);
 
@@ -295,8 +280,8 @@ function api_checkout(array $payload)
         /* ---------- raw ingredient availability ---------- */
         if ($ingredientNeeds && !$allowNeg) {
             $ingIds = array_keys($ingredientNeeds);
-            $ph     = implode(',', array_fill(0, count($ingIds), '?'));
-            $rows   = db_all(
+            $ph = implode(',', array_fill(0, count($ingIds), '?'));
+            $rows = db_all(
                 "SELECT id, name, stock_qty, unit FROM ingredients WHERE id IN ($ph) FOR UPDATE",
                 $ingIds
             );
@@ -317,22 +302,21 @@ function api_checkout(array $payload)
 
         /* ---------- persist ---------- */
         $saleNo = next_sale_no();
-
         $saleId = db_insert('sales', [
-            'sale_no'        => $saleNo,
-            'user_id'        => $user['id'],
-            'user_name'      => $user['name'],
-            'shift_id'       => $shift ? $shift['id'] : null,
-            'customer_name'  => $customer !== '' ? $customer : null,
-            'subtotal'       => $subtotal,
+            'sale_no' => $saleNo,
+            'user_id' => $user['id'],
+            'user_name' => $user['name'],
+            'shift_id' => $shift ? $shift['id'] : null,
+            'customer_name' => $customer !== '' ? $customer : null,
+            'subtotal' => $subtotal,
             'discount_total' => $cartDiscount,
-            'tax_total'      => $tax,
-            'total'          => $total,
-            'paid_amount'    => $cashIn,
-            'change_amount'  => $change,
+            'tax_total' => $tax,
+            'total' => $total,
+            'paid_amount' => $cashIn,
+            'change_amount' => $change,
             'payment_method' => $method,
-            'status'         => 'queued',      // SRS: order is queued for kitchen prep
-            'note'           => $note !== '' ? $note : null,
+            'status' => 'queued', // Queued for kitchen display
+            'note' => $note !== '' ? $note : null,
         ]);
 
         $stItem = db()->prepare(
@@ -358,7 +342,7 @@ function api_checkout(array $payload)
 
         foreach ($lines as $idx => $line) {
             $lineShare = $subtotal > 0 ? ($line['net'] / $subtotal) : 0;
-            $lineTax   = $line['tax_exempt'] || $taxableNet <= 0
+            $lineTax = $line['tax_exempt'] || $taxableNet <= 0
                 ? 0.0
                 : round($tax * ($line['net'] / $taxableNet), 2);
 
@@ -379,23 +363,27 @@ function api_checkout(array $payload)
                 $lineTax,
                 $lineTotal,
             ]);
+
             $saleItemId = (int) db()->lastInsertId();
 
             foreach ($line['modifiers'] as $mod) {
                 $stMod->execute([$saleItemId, $mod['id'], $mod['name'], $mod['delta']]);
             }
 
-            // finished-product stock
+            // finished-product stock deduction
             $stDeductProd->execute([$line['qty'], $line['product_id']]);
-            stock_move($line['product_id'], -$line['qty'], 'Order ' . $saleNo,
-                       round($line['stock'] - $line['qty'], 3));
+            stock_move(
+                $line['product_id'],
+                -$line['qty'],
+                'Order ' . $saleNo,
+                round($line['stock'] - $line['qty'], 3)
+            );
 
-            // raw ingredients this recipe consumes
+            // raw ingredients BOM deduction
             foreach ($lineRecipes[$idx] ?? [] as $r) {
                 $used = (float) $r['qty_per_unit'] * $line['qty'];
                 $stDeductIng->execute([$used, $r['ingredient_id']]);
                 $stIng->execute([$saleItemId, $r['ingredient_id'], $r['name'], $used]);
-
                 $balance = (float) db_val('SELECT stock_qty FROM ingredients WHERE id = ?', [$r['ingredient_id']]);
                 stock_move_ingredient($r['ingredient_id'], -$used, 'Order ' . $saleNo, $balance);
             }
@@ -408,19 +396,19 @@ function api_checkout(array $payload)
     }
 
     return [
-        'ok'          => true,
-        'sale_id'     => (int) $saleId,
-        'sale_no'     => $saleNo,
-        'subtotal'    => round($subtotal, $decimals),
-        'discount'    => $cartDiscount,
-        'tax'         => $tax,
-        'total'       => $total,
-        'paid'        => $cashIn,
-        'change'      => $change,
-        'method'      => $method,
-        'status'      => 'queued',
+        'ok' => true,
+        'sale_id' => (int) $saleId,
+        'sale_no' => $saleNo,
+        'subtotal' => round($subtotal, $decimals),
+        'discount' => $cartDiscount,
+        'tax' => $tax,
+        'total' => $total,
+        'paid' => $cashIn,
+        'change' => $change,
+        'method' => $method,
+        'status' => 'queued',
         'kitchen_url' => base_url('index.php?page=kitchen'),
         'receipt_url' => base_url('index.php?page=sale&id=' . $saleId . '&print=1'),
-        'view_url'    => base_url('index.php?page=sale&id=' . $saleId),
+        'view_url' => base_url('index.php?page=sale&id=' . $saleId),
     ];
 }
