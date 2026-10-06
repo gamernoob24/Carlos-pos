@@ -19,8 +19,8 @@ function pos_controller()
     );
 
     foreach ($products as $i => $p) {
-        $products[$i]['price']      = (float) $p['price'];
-        $products[$i]['stock']      = (float) $p['stock'];
+        $products[$i]['price'] = (float) $p['price'];
+        $products[$i]['stock'] = (float) $p['stock'];
         $products[$i]['tax_exempt'] = (int) $p['tax_exempt'];
     }
 
@@ -37,25 +37,26 @@ function pos_controller()
     $shift = current_shift();
 
     return [
-        'title'      => 'Point of Sale',
+        'title' => 'Point of Sale',
         'categories' => $categories,
-        'products'   => $products,
-        'modifiers'  => $modifiers,
-        'recent'     => $recent,
-        'shift'      => $shift,
+        'products' => $products,
+        'modifiers' => $modifiers,
+        'recent' => $recent,
+        'shift' => $shift,
         'openOrders' => (int) db_val("SELECT COUNT(*) FROM sales WHERE status IN ('queued','preparing')"),
         'jsSettings' => [
-            'currencySymbol'    => setting('currency_symbol', '₱'),
-            'currencyPosition'  => setting('currency_position', 'before'),
-            'decimals'          => (int) setting('decimal_places', '2'),
-            'taxRate'           => (float) setting('tax_rate', '0'),
-            'taxName'           => setting('tax_name', 'Tax'),
-            'taxMode'           => setting('tax_mode', 'inclusive'),
-            'allowNegative'     => (int) setting('allow_negative_stock', '0'),
-            'checkoutUrl'       => base_url('api.php?action=checkout'),
-            'searchUrl'         => base_url('api.php?action=search'),
-            'csrfToken'         => csrf_token(),
-            'hasShift'          => $shift ? 1 : 0,
+            'currencySymbol' => setting('currency_symbol', '₱'),
+            'currencyPosition' => setting('currency_position', 'before'),
+            'decimals' => (int) setting('decimal_places', '2'),
+            'taxRate' => (float) setting('tax_rate', '0'),
+            'taxName' => setting('tax_name', 'Tax'),
+            'taxMode' => setting('tax_mode', 'inclusive'),
+            'allowNegative' => (int) setting('allow_negative_stock', '0'),
+            'checkoutUrl' => base_url('api.php?action=checkout'),
+            'searchUrl' => base_url('api.php?action=search'),
+            'liveUrl' => base_url('api.php?action=pos_live_data'), // <-- ADD THIS
+            'csrfToken' => csrf_token(),
+            'hasShift' => $shift ? 1 : 0,
         ],
     ];
 }

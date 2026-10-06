@@ -113,4 +113,59 @@
       });
     });
   });
+})(); 
+/* ---------- Notification System Handler ---------- */
+(function () {
+  var btn = document.getElementById('notifBtn');
+  var drawer = document.getElementById('notifDrawer');
+  var backdrop = document.getElementById('notifBackdrop');
+  var closeBtn = document.getElementById('closeNotif');
+  var badge = document.getElementById('notifBadge');
+  var list = document.getElementById('notifList');
+
+  if (!btn || !drawer) return;
+
+  function toggleDrawer(show) {
+    var open = show !== undefined ? show : drawer.hidden;
+    drawer.hidden = !open;
+    if (backdrop) backdrop.hidden = !open;
+  }
+
+  btn.addEventListener('click', function () { toggleDrawer(); });
+  if (closeBtn) closeBtn.addEventListener('click', function () { toggleDrawer(false); });
+  if (backdrop) backdrop.addEventListener('click', function () { toggleDrawer(false); });
+
+  function fetchNotifs() {
+    fetch('api.php?action=notifications')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) return;
+
+        if (badge) {
+          badge.textContent = res.count;
+          badge.hidden = res.count === 0;
+        }
+
+        if (!list) return;
+
+        if (!res.notifications || res.notifications.length === 0) {
+          list.innerHTML = '<p class="empty small">No new notifications or alerts.</p>';
+          return;
+        }
+
+        var html = '';
+        for (var i = 0; i < res.notifications.length; i++) {
+          var item = res.notifications[i];
+          html += '<a href="' + (item.link || '#') + '" class="notif-item notif-' + item.type + '">' +
+                    '<strong>' + item.title + '</strong>' +
+                    '<span>' + item.message + '</span>' +
+                  '</a>';
+        }
+        list.innerHTML = html;
+      })
+      .catch(function () {});
+  }
+
+  fetchNotifs();
+  setInterval(fetchNotifs, 15000); // Check for updates every 15 seconds
 })();

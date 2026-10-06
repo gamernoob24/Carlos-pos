@@ -528,3 +528,88 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   .kitchen-grid { grid-template-columns: 1fr; }
   .oc-foot { flex-direction: column; align-items: stretch; }
 }
+/* ================= Notification Drawer & Badge ================= */
+.icon-btn-nav {
+  position: relative;
+  background: none;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: .4rem .65rem;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-2);
+}
+.icon-btn-nav:hover { background: var(--panel-2); }
+
+.notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--bad);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 700;
+  padding: .1rem .38rem;
+  border-radius: 999px;
+  line-height: 1;
+  border: 2px solid #fff;
+}
+
+.notif-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(360px, 100vw);
+  height: 100vh;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(15, 23, 42, .18);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+}
+.notif-drawer[hidden] { display: none; }
+
+.notif-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .3);
+  z-index: 110;
+}
+.notif-backdrop[hidden] { display: none; }
+
+.notif-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notif-header h3 { margin: 0; font-size: 1.05rem; }
+.btn-close { background: none; border: 0; font-size: 1.4rem; cursor: pointer; color: var(--muted); }
+
+.notif-body {
+  padding: .75rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.notif-item {
+  padding: .7rem .85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: .88rem;
+  display: grid;
+  gap: .2rem;
+}
+.notif-item.notif-warn { background: var(--warn-50); border-color: #fde68a; color: #92400e; }
+.notif-item.notif-danger { background: var(--bad-50); border-color: #fecaca; color: #991b1b; }
+.notif-item.notif-info { background: var(--brand-50); border-color: #bfdbfe; color: var(--brand-600); }
+
+.notif-item strong { display: block; font-size: .9rem; }
+.notif-item .time { font-size: .75rem; opacity: .8; text-align: right; margin-top: .2rem; }

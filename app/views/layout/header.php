@@ -3,16 +3,16 @@
  * Layout: header / sidebar / topbar
  * Variables available from index.php: $data, $page, $layout, $action
  */
-$user     = $layout === 'app' ? current_user() : null;
-$flashes  = take_flash();
-$title    = $data['title'] ?? ucfirst($page ?? 'POS');
+$user = $layout === 'app' ? current_user() : null;
+$flashes = take_flash();
+$title = $data['title'] ?? ucfirst($page ?? 'POS');
 $lowCount = 0;
 $lowIngredients = 0;
 $openOrders = 0;
 if ($layout === 'app') {
-    $lowCount       = (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1 AND stock_qty <= reorder_level');
-    $lowIngredients = (int) db_val('SELECT COUNT(*) FROM ingredients WHERE active = 1 AND stock_qty <= reorder_level');
-    $openOrders     = (int) db_val("SELECT COUNT(*) FROM sales WHERE status IN ('queued','preparing')");
+  $lowCount = (int) db_val('SELECT COUNT(*) FROM products WHERE active = 1 AND stock_qty <= reorder_level');
+  $lowIngredients = (int) db_val('SELECT COUNT(*) FROM ingredients WHERE active = 1 AND stock_qty <= reorder_level');
+  $openOrders = (int) db_val("SELECT COUNT(*) FROM sales WHERE status IN ('queued','preparing')");
 }
 
 /*
@@ -21,98 +21,127 @@ if ($layout === 'app') {
  *   Manager  → everything, incl. menu, ingredients, recipes, sales & reports
  */
 $navItems = [
-    'pos'        => ['Point of Sale',   'cart',    'user'],
-    'kitchen'    => ['Kitchen Display', 'kitchen', 'user'],
-    'shifts'     => ['My Shift',        'drawer',  'user'],
-    'products'   => ['Menu Items',      'box',     'admin'],
-    'categories' => ['Categories',      'tag',     'admin'],
-    'inventory'  => ['Ingredients',     'leaf',    'admin'],
-    'recipes'    => ['Recipes',         'recipe',  'admin'],
-    'modifiers'  => ['Modifiers',       'plus',    'admin'],
-    'sales'      => ['Sales History',   'receipt', 'admin'],
-    'reports'    => ['Reports',         'chart',   'admin'],
-    'settings'   => ['Settings',        'gear',    'user'],
-    'users'      => ['Users',           'users',   'admin'],
+  'pos' => ['Point of Sale', 'cart', 'user'],
+  'kitchen' => ['Kitchen Display', 'kitchen', 'user'],
+  'shifts' => ['My Shift', 'drawer', 'user'],
+  'products' => ['Menu Items', 'box', 'admin'],
+  'categories' => ['Categories', 'tag', 'admin'],
+  'inventory' => ['Ingredients', 'leaf', 'admin'],
+  'recipes' => ['Recipes', 'recipe', 'admin'],
+  'modifiers' => ['Modifiers', 'plus', 'admin'],
+  'sales' => ['Sales History', 'receipt', 'admin'],
+  'reports' => ['Reports', 'chart', 'admin'],
+  'settings' => ['Settings', 'gear', 'user'],
+  'users' => ['Users', 'users', 'admin'],
 ];
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#111827">
-<title><?= e($title) ?> · <?= e(APP_NAME) ?></title>
-<link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#2563eb"/><path d="M9 22V10h3.2l3.8 7 3.8-7H23v12h-3v-6.6l-3.1 5.6h-1.8L12 15.4V22z" fill="#fff"/></svg>') ?>">
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title><?= e($title) ?> · <?= e(APP_NAME) ?></title>
+  <link rel="icon"
+    href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#2563eb"/><path d="M9 22V10h3.2l3.8 7 3.8-7H23v12h-3v-6.6l-3.1 5.6h-1.8L12 15.4V22z" fill="#fff"/></svg>') ?>">
+  <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 </head>
+
 <body class="layout-<?= e($layout) ?><?= $page === 'pos' ? ' page-pos' : '' ?>">
-<?php if ($layout === 'app'): ?>
-<div class="app-shell">
+  <?php if ($layout === 'app'): ?>
+    <div class="app-shell">
 
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">A</div>
-      <div class="brand-text">
-        <strong>Carlos POS</strong>
-        <span>Web Edition</span>
-      </div>
-    </div>
-
-    <nav class="nav">
-      <?php foreach ($navItems as $key => [$label, $icon, $required]): ?>
-        <?php if ($required === 'admin' && !is_admin()) { continue; } ?>
-        <a class="nav-link<?= $page === $key ? ' active' : '' ?>" href="<?= e(base_url('index.php?page=' . $key)) ?>">
-          <span class="ico ico-<?= e($icon) ?>" aria-hidden="true"></span>
-          <span class="nav-label"><?= e($label) ?></span>
-          <?php if ($key === 'products' && $lowCount > 0): ?>
-            <span class="nav-badge" title="Menu items at or below reorder level"><?= e($lowCount) ?></span>
-          <?php endif; ?>
-          <?php if ($key === 'inventory' && $lowIngredients > 0): ?>
-            <span class="nav-badge" title="Ingredients at or below reorder level"><?= e($lowIngredients) ?></span>
-          <?php endif; ?>
-          <?php if ($key === 'kitchen' && $openOrders > 0): ?>
-            <span class="nav-badge" title="Orders waiting for the kitchen"><?= e($openOrders) ?></span>
-          <?php endif; ?>
-        </a>
-      <?php endforeach; ?>
-    </nav>
-
-    <div class="sidebar-foot">
-      <div class="who">
-        <div class="avatar"><?= e(initial($user['name'])) ?></div>
-        <div>
-          <strong><?= e($user['name']) ?></strong>
-          <span class="role"><?= e(role_label($user['role'])) ?></span>
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark">A</div>
+          <div class="brand-text">
+            <strong>Carlos POS</strong>
+            <span>Web Edition</span>
+          </div>
         </div>
-      </div>
-      <a class="btn btn-ghost btn-sm" href="<?= e(base_url('index.php?page=logout')) ?>">Sign out</a>
-    </div>
-  </aside>
 
-  <div class="main">
-    <header class="topbar">
-      <button class="icon-btn menu-toggle" type="button" aria-label="Menu" data-toggle-sidebar>
-        <span></span><span></span><span></span>
-      </button>
-      <div class="topbar-title">
-        <h1><?= e($title) ?></h1>
-      </div>
-      <div class="topbar-meta">
-        <span class="clock" id="clock"><?= e(date('D, M d · h:i A')) ?></span>
-        <a class="btn btn-primary btn-sm" href="<?= e(base_url('index.php?page=pos')) ?>">New Sale</a>
-      </div>
-    </header>
+        <nav class="nav">
+          <?php foreach ($navItems as $key => [$label, $icon, $required]): ?>
+            <?php if ($required === 'admin' && !is_admin()) {
+              continue;
+            } ?>
+            <a class="nav-link<?= $page === $key ? ' active' : '' ?>" href="<?= e(base_url('index.php?page=' . $key)) ?>">
+              <span class="ico ico-<?= e($icon) ?>" aria-hidden="true"></span>
+              <span class="nav-label"><?= e($label) ?></span>
+              <?php if ($key === 'products' && $lowCount > 0): ?>
+                <span class="nav-badge" title="Menu items at or below reorder level"><?= e($lowCount) ?></span>
+              <?php endif; ?>
+              <?php if ($key === 'inventory' && $lowIngredients > 0): ?>
+                <span class="nav-badge" title="Ingredients at or below reorder level"><?= e($lowIngredients) ?></span>
+              <?php endif; ?>
+              <?php if ($key === 'kitchen' && $openOrders > 0): ?>
+                <span class="nav-badge" title="Orders waiting for the kitchen"><?= e($openOrders) ?></span>
+              <?php endif; ?>
+            </a>
+          <?php endforeach; ?>
+        </nav>
 
-    <main class="content">
-      <?php foreach ($flashes as $f): ?>
-        <div class="alert alert-<?= e($f['type']) ?>" role="alert">
-          <span><?= $f['message'] ?></span>
-          <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+        <div class="sidebar-foot">
+          <div class="who">
+            <div class="avatar"><?= e(initial($user['name'])) ?></div>
+            <div>
+              <strong><?= e($user['name']) ?></strong>
+              <span class="role"><?= e(role_label($user['role'])) ?></span>
+            </div>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="<?= e(base_url('index.php?page=logout')) ?>">Sign out</a>
         </div>
-      <?php endforeach; ?>
-<?php else: ?>
-  <div class="auth-wrap">
-    <?php foreach ($flashes as $f): ?>
-      <div class="alert alert-<?= e($f['type']) ?>" role="alert"><span><?= $f['message'] ?></span></div>
-    <?php endforeach; ?>
-<?php endif; ?>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <button class="icon-btn menu-toggle" type="button" aria-label="Menu" data-toggle-sidebar>
+            <span></span><span></span><span></span>
+          </button>
+          <div class="topbar-title">
+            <h1><?= e($title) ?></h1>
+          </div>
+          <div class="topbar-meta">
+            <span class="clock" id="clock"><?= e(date('D, M d · h:i A')) ?></span>
+            <a class="btn btn-primary btn-sm" href="<?= e(base_url('index.php?page=pos')) ?>">New Sale</a>
+          </div>
+        </header>
+
+        <main class="content">
+          <?php foreach ($flashes as $f): ?>
+            <div class="alert alert-<?= e($f['type']) ?>" role="alert">
+              <span><?= $f['message'] ?></span>
+              <button type="button" class="alert-close" aria-label="Dismiss">&times;</button>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="auth-wrap">
+            <?php foreach ($flashes as $f): ?>
+              <div class="alert alert-<?= e($f['type']) ?>" role="alert"><span><?= $f['message'] ?></span></div>
+            <?php endforeach; ?>
+          <?php endif; ?>
+          <!-- In app/views/layout/header.php inside <div class="topbar-meta"> -->
+          <div class="topbar-meta">
+            <span class="clock" id="clock"><?= e(date('D, M d   h:i A')) ?></span>
+
+            <!-- Notification Bell Button -->
+            <button type="button" class="icon-btn-nav" id="notifBtn" title="Notifications" aria-label="Notifications">
+              <span class="ico ico-bell" aria-hidden="true">🔔</span>
+              <span class="notif-badge" id="notifBadge" hidden>0</span>
+            </button>
+
+            <a class="btn btn-primary btn-sm" href="<?= e(base_url('index.php?page=pos')) ?>">New Sale</a>
+          </div>
+
+          <!-- Slide-out Notification Drawer -->
+          <div class="notif-drawer" id="notifDrawer" hidden>
+            <div class="notif-header">
+              <h3>Notifications &amp; Alerts</h3>
+              <button type="button" class="btn-close" id="closeNotif">&times;</button>
+            </div>
+            <div class="notif-body" id="notifList">
+              <p class="empty small">Checking for updates...</p>
+            </div>
+          </div>
+          <div class="notif-backdrop" id="notifBackdrop" hidden></div>

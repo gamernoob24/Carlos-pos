@@ -4,12 +4,12 @@
 (function () {
   'use strict';
 
-  var PRODUCTS  = window.POS_PRODUCTS || [];
-  var MODIFIERS = window.POS_MODIFIERS || [];
-  var SET       = window.POS_SETTINGS || {};
-  var cart      = [];
-  var filterText = '';
-  var filterCat  = 0;
+  var PRODUCTS    = window.POS_PRODUCTS || [];
+  var MODIFIERS   = window.POS_MODIFIERS || [];
+  var SET         = window.POS_SETTINGS || {};
+  var cart        = [];
+  var filterText  = '';
+  var filterCat   = 0;
   var editingLine = -1;
 
   var el = {
@@ -557,6 +557,69 @@
       if (cart.length && window.confirm('Clear the current order?')) resetSale();
     }
   });
+
+  /* ------------------ background AJAX updates ----------------------- */
+  function updateRecentOrders(recent) {
+    var tableBody = document.querySelector('.recent-card tbody');
+    if (!tableBody || !recent) return;
+
+    var html = '';
+    for (var i = 0; i < recent.length; i++) {
+      var s = recent[i];
+      var statusClass = 'pill-muted';
+      var statusLabel = s.status;
+
+      if (s.status === 'queued') { statusClass = 'pill-low'; statusLabel = 'Queued'; }
+      else if (s.status === 'preparing') { statusClass = 'pill-card'; statusLabel = 'Preparing'; }
+      else if (s.status === 'completed') { statusClass = 'pill-ok'; statusLabel = 'Served'; }
+      else if (s.status === 'voided') { statusClass = 'pill-muted'; statusLabel = 'Voided'; }
+
+      var isVoided = s.status === 'voided' ? ' class="row-voided"' : '';
+
+      html += '<tr' + isVoided + '>' +
+                '<td><strong>' + escapeHtml(s.sale_no) + '</strong></td>' +
+                '<td>' + escapeHtml(s.created_at) + '</td>' +
+                '<td><span class="pill pill-' + escapeHtml(s.payment_method) + '">' + escapeHtml(s.payment_method.charAt(0).toUpperCase() + s.payment_method.slice(1)) + '</span></td>' +
+                '<td><span class="pill ' + statusClass + '">' + escapeHtml(statusLabel) + '</span></td>' +
+                '<td class="right">' + money(s.total) + '</td>' +
+                '<td class="right"><a class="btn btn-sm btn-ghost" href="index.php?page=sale&id=' + s.id + '">View</a></td>' +
+              '</tr>';
+    }
+    tableBody.innerHTML = html;
+  }
+
+  function syncLiveData() {
+    if (!SET.liveUrl) return;
+
+    fetch(SET.liveUrl)
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) return;
+
+        // Update product stock levels
+        if (res.products && res.products.length) {
+          PRODUCTS = res.products;
+          renderProducts();
+        }
+
+        // Update recent orders table
+        if (res.recent) {
+          updateRecentOrders(res.recent);
+        }
+
+        // Update kitchen badge counter
+        var kitchenBadge = document.querySelector('.chip-link strong');
+        if (kitchenBadge && res.openOrders !== undefined) {
+          kitchenBadge.textContent = res.openOrders;
+        }
+      })
+      .catch(function () {
+        /* Silently ignore network hiccup */
+      });
+  }
+
+  // Poll for background data updates every 8 seconds
+  setInterval(syncLiveData, 8000);
 
   /* --------------------- init ------------------------- */
   renderProducts();
