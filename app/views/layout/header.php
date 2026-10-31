@@ -105,6 +105,13 @@ $navItems = [
           <div class="topbar-meta">
             <span class="clock" id="clock"><?= e(date('D, M d · h:i A')) ?></span>
             <a class="btn btn-primary btn-sm" href="<?= e(base_url('index.php?page=pos')) ?>">New Sale</a>
+
+
+            <!-- Notification Bell Button -->
+            <button type="button" class="icon-btn-nav" id="notifBtn" title="Notifications" aria-label="Notifications">
+              <span class="ico ico-bell" aria-hidden="true">🔔</span>
+              <span class="notif-badge" id="notifBadge" hidden>0</span>
+            </button>
           </div>
         </header>
 
@@ -122,17 +129,8 @@ $navItems = [
             <?php endforeach; ?>
           <?php endif; ?>
           <!-- In app/views/layout/header.php inside <div class="topbar-meta"> -->
-          <div class="topbar-meta">
-            <span class="clock" id="clock"><?= e(date('D, M d   h:i A')) ?></span>
 
-            <!-- Notification Bell Button -->
-            <button type="button" class="icon-btn-nav" id="notifBtn" title="Notifications" aria-label="Notifications">
-              <span class="ico ico-bell" aria-hidden="true">🔔</span>
-              <span class="notif-badge" id="notifBadge" hidden>0</span>
-            </button>
 
-            <a class="btn btn-primary btn-sm" href="<?= e(base_url('index.php?page=pos')) ?>">New Sale</a>
-          </div>
 
           <!-- Slide-out Notification Drawer -->
           <div class="notif-drawer" id="notifDrawer" hidden>
